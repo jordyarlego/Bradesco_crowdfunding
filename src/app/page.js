@@ -1,103 +1,113 @@
-import Image from "next/image";
+// src/app/page.js
+
+import Header from './components/Header';
+import Image from 'next/image';
+import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <>
+      <Header />
+      <main className="min-h-screen">
+        {/* Seção Hero */}
+        <section className="h-screen flex items-center overflow-hidden">
+          <div className="container mx-auto px-4 flex items-center justify-between w-full">
+            
+            {/* Conteúdo Principal - Lado Esquerdo */}
+            <div className="flex-1 max-w-2xl">
+              <div className="space-y-6">
+                <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
+                  Invista em Pessoas.
+                </h1>
+                <h2 className="text-5xl lg:text-6xl font-bold leading-tight">
+                  Receba com Segurança.
+                </h2>
+              </div>
+              
+              <p className="text-xl text-gray-300 max-w-lg mt-8 mb-10">
+                Sociedade de Empréstimo entre Pessoas: confiança, transparência e regulamentação em um só lugar.
+              </p>
+              
+              <Link href="/registro">
+                <button className="bg-brand-pink hover:bg-brand-pink-light text-white font-bold px-16 py-8 rounded-full text-xl transition-all duration-300 shadow-2xl transform hover:scale-110 hover:shadow-brand-pink/25 animate-pulse hover:animate-none">
+                  Comece agora!
+                </button>
+              </Link>
+            </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+            {/* Seção da Imagem - Lado Direito */}
+            <div className="flex-1 relative flex justify-end items-center">
+              {/* Container principal */}
+              <div className="relative w-[700px] h-[700px] flex items-center justify-end">
+                
+                {/* Círculo de fundo com efeito especial */}
+                <div className="absolute inset-0 w-full h-full rounded-full bg-gradient-to-br from-brand-purple-light/30 to-brand-purple-dark/50 animate-pulse">
+                  {/* Efeito de ondas concêntricas */}
+                  <div className="absolute inset-0 rounded-full border-2 border-brand-pink/20 animate-ping"></div>
+                  <div className="absolute inset-4 rounded-full border border-brand-pink-light/30 animate-ping" style={{animationDelay: '1s'}}></div>
+                  <div className="absolute inset-8 rounded-full border border-brand-pink/20 animate-ping" style={{animationDelay: '2s'}}></div>
+                  
+                  {/* Partículas flutuantes */}
+                  <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-brand-pink rounded-full animate-bounce" style={{animationDelay: '0.5s'}}></div>
+                  <div className="absolute top-3/4 right-1/4 w-1.5 h-1.5 bg-brand-pink-light rounded-full animate-bounce" style={{animationDelay: '1.5s'}}></div>
+                  <div className="absolute bottom-1/4 left-1/3 w-1 h-1 bg-white rounded-full animate-bounce" style={{animationDelay: '2.5s'}}></div>
+                </div>
+                
+                {/* Imagem da mulher - um pouco maior */}
+                <div className="relative z-10 w-[580px] h-[580px] -mr-20">
+                  <Image 
+                    src="/mulher.png" 
+                    alt="Mulher com smartphone" 
+                    width={580} 
+                    height={580} 
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                </div>
+
+                {/* Bubbles Informativos - reorganizados para não se sobreporem */}
+                {/* Bubble 1 - R$ 50 milhões */}
+                <div className="absolute z-20 top-12 left-12 bg-brand-pink-bubble text-brand-purple-dark p-5 rounded-2xl shadow-xl animate-float backdrop-blur-sm">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-3xl">💰</span>
+                    <div>
+                      <p className="font-bold text-lg">R$ 50 milhões</p>
+                      <p className="text-sm">já investidos</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bubble 2 - Receba direto */}
+                <div className="absolute z-20 top-1/2 left-8 transform -translate-y-1/2 bg-brand-pink-bubble text-brand-purple-dark p-5 rounded-2xl shadow-xl animate-float backdrop-blur-sm" style={{animationDelay: '2s'}}>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-3xl">🤝</span>
+                    <div>
+                      <p className="font-bold text-lg">Receba direto</p>
+                      <p className="text-sm">na sua conta</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bubble 3 - +1.000 Usuários */}
+                <div className="absolute z-20 bottom-32 left-20 bg-brand-pink-bubble text-brand-purple-dark p-5 rounded-2xl shadow-xl animate-float backdrop-blur-sm" style={{animationDelay: '4s'}}>
+                  <div className="flex items-center space-x-3">
+                    <div className="flex -space-x-1">
+                      <div className="w-7 h-7 bg-brand-pink rounded-full border-2 border-white"></div>
+                      <div className="w-7 h-7 bg-brand-pink-light rounded-full border-2 border-white"></div>
+                      <div className="w-7 h-7 bg-brand-purple-light rounded-full border-2 border-white"></div>
+                      <div className="w-7 h-7 bg-brand-purple-dark rounded-full border-2 border-white"></div>
+                    </div>
+                    <div>
+                      <p className="font-bold text-lg">+1.000</p>
+                      <p className="text-sm">Usuários ativos</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    </>
+  )
 }
