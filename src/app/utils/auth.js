@@ -44,39 +44,47 @@ export const login = (email, senha) => {
     const user = users.find(u => u.email === email && u.senha === senha);
     
     if (user) {
-      // Salvar usuário logado
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      return { success: true, user };
+      const fakeToken = `token-${user.id}-${Date.now()}`;
+      
+      localStorage.setItem("authToken", fakeToken);
+      localStorage.setItem("userData", JSON.stringify(user));
+      
+      return { success: true, user, token: fakeToken };
     }
-    
-    return { success: false, message: 'Email ou senha incorretos' };
+
+    return { success: false, message: "Email ou senha incorretos" };
   } catch (error) {
-    console.error('Erro ao fazer login:', error);
-    return { success: false, message: 'Erro interno do sistema' };
+    return { success: false, message: "Erro interno do sistema" };
   }
 };
 
 // Função para obter usuário logado
 export const getCurrentUser = () => {
+  if (typeof window === 'undefined') return null;
+  
   try {
-    const user = localStorage.getItem('currentUser');
-    return user ? JSON.parse(user) : null;
+    const token = localStorage.getItem('authToken');
+    const userData = localStorage.getItem('userData');
+    
+    if (!token || !userData) return null;
+    
+    const user = JSON.parse(userData);
+    return {
+      ...user,
+      token: token
+    };
   } catch (error) {
-    console.error('Erro ao obter usuário logado:', error);
+    console.error('Erro ao recuperar usuário:', error);
     return null;
   }
 };
 
 // Função para fazer logout
 export const logout = () => {
-  try {
-    localStorage.removeItem('currentUser');
-    return true;
-  } catch (error) {
-    console.error('Erro ao fazer logout:', error);
-    return false;
-  }
-};
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('userData');
+  return true;
+}
 
 // Função para verificar se usuário está logado
 export const isLoggedIn = () => {

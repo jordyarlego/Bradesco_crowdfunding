@@ -1,33 +1,79 @@
 'use client';
 
-// src/app/dashboard-tomador/page.js
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser, logout, isBorrower } from '../utils/auth';
-import Link from 'next/link';
+import { AuthContext } from '../utils/authContext';
 import SidebarTomador from '../components/SidebarTomador';
+import { emprestimoService } from '@/services/emprestimoService';
 
 export default function DashboardTomador() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { usuario, autenticado, loading: authLoading, isBorrower } = useContext(AuthContext);
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [emprestimos, setEmprestimos] = useState([]);
+  const [isLoadingEmprestimos, setIsLoadingEmprestimos] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  // 1. Validação de autenticação
   useEffect(() => {
-    // Verificar se usuário está logado e é tomador
-    const currentUser = getCurrentUser();
-    if (!currentUser || !isBorrower()) {
-      router.push('/entrar');
+    if (authLoading) return;
+
+    console.log("Dashboard Tomador — validação:", {
+      autenticado,
+      roleCheck: isBorrower(),
+      usuario
+    });
+
+    if (!autenticado) {
+      router.push("/entrar");
       return;
     }
-    setUser(currentUser);
-    setIsLoading(false);
-  }, [router]);
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
-  };
+    if (!usuario) return;
+
+    if (!isBorrower()) {
+      router.push("/entrar");
+      return;
+    }
+
+    setIsLoading(false);
+  }, [autenticado, authLoading, usuario, router]);
+
+  // 2. Buscar empréstimos
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!autenticado || !usuario) return;
+
+      try {
+        setIsLoadingEmprestimos(true);
+
+        const response = await emprestimoService.listarEmprestimosPorTomador(
+          usuario.id,
+          usuario.token
+        );
+
+        console.log("Empréstimos carregados:", response);
+        setEmprestimos(response || []);
+
+      } catch (error) {
+        console.error("Erro ao buscar empréstimos:", error);
+
+        setToast({
+          type: "error",
+          message: error.message || "Erro ao carregar seus empréstimos"
+        });
+
+        if (String(error.message).includes("401")) {
+          router.push("/entrar");
+        }
+      } finally {
+        setIsLoadingEmprestimos(false);
+      }
+    };
+
+    fetchData();
+  }, [autenticado, usuario, router]);
 
   if (isLoading) {
     return (
@@ -37,187 +83,121 @@ export default function DashboardTomador() {
     );
   }
 
+  const formatarMoeda = (v) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <SidebarTomador user={user} />
-      {/* Main Content */}
+      <SidebarTomador user={usuario} />
+
       <div className="flex-1 flex flex-col">
-        {/* Header */}
+
+        {/* HEADER */}
         <header className="bg-white px-8 py-6 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-brand-purple-dark">
-              Olá, Tomador!
-            </h1>
-            <a href="/dashboard-tomador/solicitar-emprestimo">
-              <button className="bg-brand-pink hover:bg-brand-pink-light text-white px-5 py-2 rounded-full font-bold ml-4 shadow transition-all">
-                Solicitar Empréstimo
-              </button>
-            </a>
-          </div>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-pink"
-            />
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              🔍
-            </div>
-          </div>
+          <h1 className="text-2xl font-bold text-brand-purple-dark">
+            Olá, {usuario?.nome}!
+          </h1>
+
+          <button
+            onClick={() => router.push('/dashboard-tomador/solicitar-emprestimo')}
+            className="bg-brand-pink hover:bg-brand-pink-light text-white px-5 py-2 rounded-full font-bold ml-4 shadow transition-all"
+          >
+            Solicitar Empréstimo
+          </button>
         </header>
 
-        {/* Dashboard Content */}
+        {/* CONTEÚDO PRINCIPAL */}
         <main className="flex-1 p-8">
-          {/* Top Cards */}
-          <div className="grid grid-cols-2 gap-6 mb-8">
-            {/* Saldo Devedor */}
-            <div className="bg-gradient-to-br from-brand-purple-light to-brand-purple-dark rounded-2xl p-6 text-white relative overflow-hidden">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-sm opacity-80 mb-2">Saldo devedor</h3>
-                  <p className="text-3xl font-bold">R$ 7.000,00</p>
-                </div>
-              </div>
-              
-              {/* Gráfico simples */}
-              <div className="flex items-end space-x-1 mb-4">
-                <div className="w-2 bg-white/40 h-8"></div>
-                <div className="w-2 bg-white/60 h-12"></div>
-                <div className="w-2 bg-white/80 h-16"></div>
-                <div className="w-2 bg-white h-10"></div>
-              </div>
-              <div className="text-xs opacity-60">jul ago set out</div>
-              
-              {/* Moedas decorativas */}
-              <div className="absolute top-4 right-4 text-2xl opacity-30">
-                💰💰💰
-              </div>
-            </div>
 
-            {/* Próxima Parcela */}
-            <div className="bg-gradient-to-br from-brand-purple-light to-brand-purple-dark rounded-2xl p-6 text-white">
-              <h3 className="text-sm opacity-80 mb-2">Próxima parcela</h3>
-              <p className="text-2xl font-bold mb-2">15 outubro</p>
-              <p className="text-xl mb-4">R$ 200,00</p>
-              <button className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-full font-semibold transition-colors">
-                Pagar agora
-              </button>
+          {/* Toast */}
+          {toast && (
+            <div className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+              toast.type === 'error'
+                ? 'bg-red-500 text-white'
+                : 'bg-green-500 text-white'
+            }`}>
+              {toast.message}
             </div>
-          </div>
+          )}
 
-          {/* Parcelas */}
+          {/* CARD — Empréstimos */}
           <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
-            <h2 className="text-xl font-bold text-brand-purple-dark mb-4">
-              Parcelas
+            <h2 className="text-xl font-bold text-brand-purple-dark mb-6">
+              Seus Empréstimos
             </h2>
-            
-            {/* Filtros */}
-            <div className="flex space-x-2 mb-6">
-              <button className="px-4 py-2 bg-brand-pink text-white rounded-full text-sm">
-                Pagas
-              </button>
-              <button className="px-4 py-2 bg-brand-pink text-white rounded-full text-sm">
-                Em aberto
-              </button>
-              <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300">
-                Futuras parcelas
-              </button>
-              <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-full text-sm hover:bg-gray-300">
-                Atrasadas
-              </button>
-            </div>
 
-            {/* Tabela de Parcelas */}
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 text-gray-600">Parcela</th>
-                    <th className="text-left py-3 text-gray-600">Valor</th>
-                    <th className="text-left py-3 text-gray-600">Vencimento</th>
-                    <th className="text-left py-3 text-gray-600">Gerar boleto</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-3 text-gray-800">1</td>
-                    <td className="py-3 text-brand-pink font-semibold">R$ 520,00</td>
-                    <td className="py-3 text-brand-pink font-semibold">15 out</td>
-                    <td className="py-3">
-                      <button className="bg-brand-pink hover:bg-brand-pink-light text-white px-4 py-2 rounded-full text-sm flex items-center space-x-1 transition-colors">
-                        <span>📄</span>
-                        <span>Gerar</span>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-3 text-gray-800">2</td>
-                    <td className="py-3 text-gray-800">R$ 150,00</td>
-                    <td className="py-3 text-gray-800">26 set</td>
-                    <td className="py-3">
-                      <button className="bg-brand-pink hover:bg-brand-pink-light text-white px-4 py-2 rounded-full text-sm flex items-center space-x-1 transition-colors">
-                        <span>📄</span>
-                        <span>Gerar</span>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-3 text-gray-800">3</td>
-                    <td className="py-3 text-gray-800">R$ 100,00</td>
-                    <td className="py-3 text-gray-800">26 out</td>
-                    <td className="py-3">
-                      <button className="bg-brand-pink hover:bg-brand-pink-light text-white px-4 py-2 rounded-full text-sm flex items-center space-x-1 transition-colors">
-                        <span>📄</span>
-                        <span>Gerar</span>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-3 text-gray-800">4</td>
-                    <td className="py-3 text-gray-800">R$ 300,00</td>
-                    <td className="py-3 text-gray-800">12 dez</td>
-                    <td className="py-3">
-                      <button className="bg-brand-pink hover:bg-brand-pink-light text-white px-4 py-2 rounded-full text-sm flex items-center space-x-1 transition-colors">
-                        <span>📄</span>
-                        <span>Gerar</span>
-                      </button>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-3 text-gray-800">5</td>
-                    <td className="py-3 text-gray-800">R$ 500,00</td>
-                    <td className="py-3 text-gray-800">16 nov</td>
-                    <td className="py-3">
-                      <button className="bg-brand-pink hover:bg-brand-pink-light text-white px-4 py-2 rounded-full text-sm flex items-center space-x-1 transition-colors">
-                        <span>📄</span>
-                        <span>Gerar</span>
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Notificações */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-brand-purple-dark mb-4">
-              Notificações
-            </h2>
-            
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
-                <div className="text-2xl">📄</div>
-                <div className="flex-1">
-                  <p className="text-gray-800">Parcela próxima em 2 dias</p>
-                </div>
+            {isLoadingEmprestimos ? (
+              <div className="flex justify-center items-center py-6">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-purple-dark"></div>
+                <span className="ml-2">Carregando empréstimos...</span>
               </div>
-            </div>
-            
-            <button className="mt-4 bg-brand-purple-light hover:bg-brand-purple-dark text-white px-6 py-3 rounded-full transition-colors">
-              Ver todas
-            </button>
+            ) : emprestimos.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 text-lg">
+                  Você ainda não possui empréstimos.
+                </p>
+
+                <button
+                  className="mt-4 bg-brand-pink text-white px-6 py-2 rounded-lg hover:bg-brand-pink-light transition-colors"
+                  onClick={() => router.push('/dashboard-tomador/solicitar-emprestimo')}
+                >
+                  Solicitar Agora
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                {emprestimos.map((emp) => (
+                  <div
+                    key={emp.id}
+                    className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-5 border border-gray-100 hover:shadow-md transition-all duration-300 hover:scale-105"
+                  >
+                    <h3 className="font-bold text-lg text-brand-purple-dark">
+                      Empréstimo #{emp.codigoTransacao}
+                    </h3>
+
+                    <div className="space-y-2 mt-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Valor solicitado:</span>
+                        <span className="font-semibold text-brand-pink">
+                          {formatarMoeda(emp.montante)}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between text-sm">
+                        <span>Saldo devedor:</span>
+                        <span className="font-semibold text-brand-pink">
+                          {formatarMoeda(emp.saldoDevedor)}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between text-sm">
+                        <span>Taxa:</span>
+                        <span span className="font-semibold text-brand-pink">{emp.juros}% a.m.</span>
+                      </div>
+
+                      <div className="flex justify-between text-sm">
+                        <span>Parcelas:</span>
+                        <span className="font-semibold text-brand-pink">{emp.prazo}</span>
+                      </div>
+
+                      <button
+                        className="mt-4 w-full bg-brand-purple-dark hover:bg-brand-purple-light text-white py-2 rounded-lg transition-colors"
+                        onClick={() =>
+                          router.push(`/dashboard-tomador/emprestimo/${emp.id}`)
+                        }
+                      >
+                        Ver Detalhes
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+              </div>
+            )}
           </div>
+
         </main>
       </div>
     </div>

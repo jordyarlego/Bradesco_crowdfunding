@@ -1,153 +1,195 @@
-'use client';
+"use client";
 
-// src/app/dashboard-investidor/pool-de-investimentos/page.js
+import { useState, useEffect, useContext } from "react";
+import { useRouter } from "next/navigation";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { getCurrentUser, isInvestor } from '../../utils/auth';
-import SidebarInvestidor from '../../components/SidebarInvestidor';
+// CORREÇÃO: Usar AuthContext em vez de funções diretas
+import { AuthContext } from "../../utils/authContext";
+
+// CORREÇÃO: Importar serviços com caminhos corretos
+import { investimentoService } from "../../../services/investimentoService";
+import { aplicacaoService } from "../../../services/aplicacaoService";
+
+import SidebarInvestidor from "../../components/SidebarInvestidor";
 
 export default function PoolDeInvestimentos() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
+
+  // CORREÇÃO: Usar contexto em vez de estado local
+  const {
+    usuario,
+    autenticado,
+    loading: authLoading,
+    isInvestor,
+  } = useContext(AuthContext);
+
   const [isLoading, setIsLoading] = useState(true);
+  const [investimentos, setInvestimentos] = useState([]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInvestimento, setSelectedInvestimento] = useState(null);
   const [valorInvestimento, setValorInvestimento] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
   const [showQRCode, setShowQRCode] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+
   const [toast, setToast] = useState(null);
 
-  // Dados mockados de investimentos
-  const investimentos = [
-    {
-      id: 1,
-      nome: 'Expansão de Restaurante',
-      tomador: 'João Silva',
-      valorTotal: 50000,
-      valorMinimo: 1000,
-      taxaJuros: 2.5,
-      prazo: 12,
-      valorArrecadado: 35000,
-      categoria: 'Alimentação',
-      descricao: 'Expansão de restaurante familiar no centro da cidade'
-    },
-    {
-      id: 2,
-      nome: 'Reforma de Loja',
-      tomador: 'Maria Santos',
-      valorTotal: 80000,
-      valorMinimo: 2000,
-      taxaJuros: 3.0,
-      prazo: 18,
-      valorArrecadado: 45000,
-      categoria: 'Varejo',
-      descricao: 'Reforma completa de loja de roupas em shopping'
-    },
-    {
-      id: 3,
-      nome: 'Aquisição de Equipamentos',
-      tomador: 'Pedro Oliveira',
-      valorTotal: 30000,
-      valorMinimo: 500,
-      taxaJuros: 2.0,
-      prazo: 6,
-      valorArrecadado: 18000,
-      categoria: 'Tecnologia',
-      descricao: 'Aquisição de equipamentos para startup de tecnologia'
-    },
-    {
-      id: 4,
-      nome: 'Abertura de Filial',
-      tomador: 'Ana Costa',
-      valorTotal: 120000,
-      valorMinimo: 5000,
-      taxaJuros: 2.8,
-      prazo: 24,
-      valorArrecadado: 95000,
-      categoria: 'Serviços',
-      descricao: 'Abertura de nova filial de empresa de serviços'
-    },
-    {
-      id: 5,
-      nome: 'Modernização de Fábrica',
-      tomador: 'Carlos Mendes',
-      valorTotal: 200000,
-      valorMinimo: 10000,
-      taxaJuros: 3.5,
-      prazo: 36,
-      valorArrecadado: 120000,
-      categoria: 'Indústria',
-      descricao: 'Modernização de linha de produção industrial'
-    }
-  ];
-
+  // ----------------------------
+  //   VALIDAÇÕES DE LOGIN - CORRIGIDO
+  // ----------------------------
   useEffect(() => {
-    // Verificar se usuário está logado e é investidor
-    const currentUser = getCurrentUser();
-    if (!currentUser || !isInvestor()) {
-      router.push('/entrar');
-      return;
-    }
-    setUser(currentUser);
-    setIsLoading(false);
-  }, [router]);
+    console.log("PoolInvestimentos - Estado auth:", {
+      autenticado,
+      authLoading,
+      usuario,
+      isInvestor: isInvestor(),
+    });
 
+    if (!authLoading) {
+      if (!autenticado || !isInvestor()) {
+        console.log("PoolInvestimentos - Redirecionando para login");
+        router.push("/entrar");
+        return;
+      }
+
+      console.log("PoolInvestimentos - Usuário autenticado como investidor");
+      fetchInvestimentos();
+    }
+  }, [autenticado, authLoading, isInvestor, router]);
+
+  // ----------------------------
+  //   BUSCA INVESTIMENTOS
+  // ----------------------------
+  const fetchInvestimentos = async () => {
+    try {
+      console.log("Buscando investimentos...");
+      const data = await investimentoService.listarInvestimentos();
+      console.log("Investimentos recebidos:", data);
+      setInvestimentos(data || []);
+    } catch (error) {
+      console.error("Erro ao carregar investimentos:", error);
+      showToast("Erro ao carregar investimentos.", "error");
+
+      // Se for erro de autenticação, redireciona
+      if (
+        error.message.includes("Token") ||
+        error.message.includes("401") ||
+        error.message.includes("403")
+      ) {
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("userData");
+        router.push("/entrar");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ----------------------------
+  //  FUNÇÕES AUXILIARES
+  // ----------------------------
   const calcularPercentual = (arrecadado, total) => {
+    if (!total || total === 0) return 0;
     return ((arrecadado / total) * 100).toFixed(1);
   };
 
   const formatarMoeda = (valor) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
+    if (!valor) return "R$ 0,00";
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
     }).format(valor);
   };
 
+  const showToast = (message, type = "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  // ----------------------------
+  //  MODAL & APLICAÇÃO - CORRIGIDO
+  // ----------------------------
   const handleInvestirClick = (investimento) => {
     setSelectedInvestimento(investimento);
-    setValorInvestimento(investimento.valorMinimo);
-    setShowQRCode(false);
-    setShowSuccess(false);
-    setIsDragging(false);
+    setValorInvestimento(investimento.valorMinimo || 0);
     setIsModalOpen(true);
   };
 
-  const showToast = (message, type = 'error') => {
-    setToast({ message, type });
-    setTimeout(() => {
-      setToast(null);
-    }, 4000);
-  };
-
-  const handleConfirmar = () => {
-    const valor = valorInvestimento;
-    const valorMin = selectedInvestimento.valorMinimo;
-    const valorMax = selectedInvestimento.valorTotal - selectedInvestimento.valorArrecadado;
-
-    if (!valor || isNaN(valor) || valor < valorMin || valor > valorMax) {
-      showToast(`O valor deve estar entre ${formatarMoeda(valorMin)} e ${formatarMoeda(valorMax)}`, 'error');
+  const handleConfirmar = async () => {
+    if (!selectedInvestimento || !usuario) {
+      showToast("Erro: dados incompletos para investimento.");
       return;
     }
 
-    setShowQRCode(true);
-    setShowSuccess(false);
+    const valor = valorInvestimento;
+    const min = selectedInvestimento.valorMinimo || 0;
+    const max =
+      selectedInvestimento.valor -
+      (selectedInvestimento.totalInvestido || 0);
 
-    // Após 3 segundos, mostrar animação de sucesso
-    setTimeout(() => {
-      setShowQRCode(false);
-      setShowSuccess(true);
-      
-      // Fechar modal após 2.5 segundos mostrando sucesso
+    // Validação do valor
+    if (valor < min) {
+      showToast(`O valor mínimo é ${formatarMoeda(min)}`);
+      return;
+    }
+
+    if (valor > max) {
+      showToast(`O valor máximo disponível é ${formatarMoeda(max)}`);
+      return;
+    }
+
+    try {
+      console.log("Enviando aplicação:", {
+        investimentoId: selectedInvestimento.id,
+        usuarioId: usuario.id,
+        valor: valor
+      });
+
+     
+      const resultado = await aplicacaoService.aplicar(
+        usuario.id,                    // usuarioId (vai no body)
+        selectedInvestimento.id,      // investimentoId (vai como param na URL)
+        valor                         // valor (vai no body)        
+      );
+
+      console.log("Aplicação realizada com sucesso:", resultado);
+
+      setShowQRCode(true);
+
+      // animação
       setTimeout(() => {
-        setIsModalOpen(false);
-        setShowSuccess(false);
         setShowQRCode(false);
-        setSelectedInvestimento(null);
-        setValorInvestimento(0);
+        setShowSuccess(true);
+
+        setTimeout(() => {
+          setIsModalOpen(false);
+          setShowSuccess(false);
+          fetchInvestimentos(); // atualiza os valores
+          showToast("Investimento realizado com sucesso!", "success");
+        }, 2500);
       }, 2500);
-    }, 3000);
+
+    } catch (error) {
+      console.error("Erro na aplicação:", error);
+      
+      // Mensagens de erro mais específicas
+      let errorMessage = "Erro ao realizar aplicação.";
+      
+      if (error.message.includes("401") || error.message.includes("Token")) {
+        errorMessage = "Sessão expirada. Faça login novamente.";
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("userData");
+        router.push("/entrar");
+      } else if (error.message.includes("400")) {
+        errorMessage = "Dados inválidos para o investimento.";
+      } else if (error.message.includes("500")) {
+        errorMessage = "Erro interno do servidor. Tente novamente.";
+      }
+      
+      showToast(errorMessage);
+    }
   };
 
   const handleCloseModal = () => {
@@ -160,29 +202,23 @@ export default function PoolDeInvestimentos() {
   };
 
   const handleSliderChange = (e) => {
-    if (!selectedInvestimento) return;
-    const valorMin = selectedInvestimento.valorMinimo;
-    const valorMax = selectedInvestimento.valorTotal - selectedInvestimento.valorArrecadado;
-    const newValue = parseFloat(e.target.value);
-    setValorInvestimento(newValue);
-  };
-
-  const handleSliderMouseDown = () => {
-    setIsDragging(true);
-  };
-
-  const handleSliderMouseUp = () => {
-    setIsDragging(false);
+    setValorInvestimento(parseFloat(e.target.value) || 0);
   };
 
   const getSliderPercentage = () => {
     if (!selectedInvestimento) return 0;
-    const valorMin = selectedInvestimento.valorMinimo;
-    const valorMax = selectedInvestimento.valorTotal - selectedInvestimento.valorArrecadado;
-    return ((valorInvestimento - valorMin) / (valorMax - valorMin)) * 100;
+
+    const min = selectedInvestimento.valorMinimo || 0;
+    const max =
+      selectedInvestimento.valor -
+      (selectedInvestimento.totalInvestido || 0);
+
+    if (max <= min) return 100;
+    return ((valorInvestimento - min) / (max - min)) * 100;
   };
 
-  if (isLoading) {
+  
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-hero-gradient flex items-center justify-center">
         <div className="text-white text-xl">Carregando...</div>
@@ -190,489 +226,238 @@ export default function PoolDeInvestimentos() {
     );
   }
 
+  
+  if (!autenticado || !isInvestor()) {
+    return (
+      <div className="min-h-screen bg-hero-gradient flex items-center justify-center">
+        <div className="text-white text-xl">Redirecionando...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <SidebarInvestidor user={user} />
       
-      {/* Main Content */}
+      <SidebarInvestidor user={usuario} />
+
+      
       <div className="flex-1 flex flex-col">
-        {/* Header */}
         <header className="bg-white px-8 py-6 flex items-center justify-between shadow-sm">
           <h1 className="text-2xl font-bold text-brand-purple-dark">
             Pool de Investimentos
           </h1>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar investimentos..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-brand-pink"
-            />
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              🔍
-            </div>
-          </div>
+          <input
+            type="text"
+            placeholder="Buscar investimentos..."
+            className="pl-10 pr-4 py-2 border border-gray-300 rounded-full"
+          />
         </header>
 
-        {/* Content */}
         <main className="flex-1 p-8">
-          <div className="mb-6">
-            <p className="text-gray-600">
-              Explore todas as oportunidades de investimento disponíveis na plataforma
-            </p>
-          </div>
+          {/* Toast Notification */}
+          {toast && (
+            <div
+              className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+                toast.type === "error"
+                  ? "bg-red-500 text-white"
+                  : "bg-green-500 text-white"
+              }`}
+            >
+              {toast.message}
+            </div>
+          )}
 
-          {/* Grid de Investimentos */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {investimentos.map((investimento) => {
-              const percentual = calcularPercentual(investimento.valorArrecadado, investimento.valorTotal);
-              
-              return (
-                <div
-                  key={investimento.id}
-                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow border border-gray-100"
-                >
-                  {/* Header do Card */}
-                  <div className="mb-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-lg font-bold text-brand-purple-dark">
-                        {investimento.nome}
-                      </h3>
-                      <span className="bg-brand-pink/10 text-brand-pink text-xs px-3 py-1 rounded-full font-semibold">
-                        {investimento.categoria}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-1">
-                      Tomador: {investimento.tomador}
-                    </p>
-                    <p className="text-xs text-gray-500 line-clamp-2">
-                      {investimento.descricao}
-                    </p>
-                  </div>
+          {investimentos.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600 text-lg mb-4">
+                Nenhum investimento disponível no momento.
+              </p>
+              <button
+                onClick={fetchInvestimentos}
+                className="bg-brand-purple-dark text-white px-6 py-2 rounded-lg hover:bg-brand-purple-light transition-colors"
+              >
+                Tentar Novamente
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {investimentos.map((investimento) => {
+                const perc = calcularPercentual(
+                  investimento.totalInvestido,
+                  investimento.valor
+                );
 
-                  {/* Informações Financeiras */}
-                  <div className="space-y-3 mb-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Valor Total:</span>
-                      <span className="text-sm font-bold text-brand-purple-dark">
-                        {formatarMoeda(investimento.valorTotal)}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Valor Mínimo:</span>
-                      <span className="text-sm font-semibold text-gray-800">
-                        {formatarMoeda(investimento.valorMinimo)}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Taxa de Juros:</span>
-                      <span className="text-sm font-semibold text-green-600">
-                        {investimento.taxaJuros}% a.m.
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Prazo:</span>
-                      <span className="text-sm font-semibold text-gray-800">
-                        {investimento.prazo} meses
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Barra de Progresso */}
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs text-gray-600">Progresso</span>
-                      <span className="text-xs font-semibold text-brand-purple-dark">
-                        {percentual}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-gradient-to-r from-brand-pink to-brand-purple-dark h-2 rounded-full transition-all"
-                        style={{ width: `${percentual}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-xs text-gray-500">
-                        {formatarMoeda(investimento.valorArrecadado)} arrecadado
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        Faltam {formatarMoeda(investimento.valorTotal - investimento.valorArrecadado)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Botão de Investir */}
-                  <button 
-                    onClick={() => handleInvestirClick(investimento)}
-                    className="w-full bg-gradient-to-r from-brand-pink to-brand-purple-dark hover:from-brand-purple-dark hover:to-brand-pink text-white py-3 rounded-full font-semibold transition-all duration-200 shadow-md hover:shadow-lg"
+                return (
+                  <div
+                    key={investimento.id}
+                    className="bg-white p-6 rounded-2xl shadow-sm border hover:shadow-md transition-shadow"
                   >
-                    Investir Agora
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                    <h3 className="text-lg font-bold text-brand-purple-dark mb-2">
+                      {investimento.nome || "Investimento Sem Nome"}
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Tomador: {investimento.tomador?.nome || "Não informado"}
+                    </p>
+
+                    <div className="my-4 space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Total:</span>
+                        <span className="text-green-600 font-semibold">
+                          {formatarMoeda(investimento.valor)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Arrecadado:</span>
+                        <span className="text-green-600 font-semibold">
+                          {formatarMoeda(investimento.totalInvestido)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Mínimo:</span>
+                        <span>{formatarMoeda(investimento.valorMinimo)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Juros:</span>
+                        <span className="text-green-600 font-semibold">
+                          {investimento.juros}% a.m.
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Prazo:</span>
+                        <span className="text-green-600 font-semibold">{investimento?.prazo} meses</span>
+                      </div>
+                    </div>
+
+                    {/* Barra de Progresso */}
+                    <div className="mb-4">
+                      <div className="w-full bg-gray-200 h-2 rounded-full mb-2">
+                        <div
+                          className="bg-gradient-to-r from-brand-pink to-brand-purple-dark h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${perc}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-600 text-center">
+                        {formatarMoeda(investimento.totalInvestido)} de{" "}
+                        {formatarMoeda(investimento.valor)} ({perc}%)
+                      </p>
+                    </div>
+
+                    <button
+                      className="w-full bg-gradient-to-r from-brand-pink to-brand-purple-dark text-white rounded-full py-3 font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleInvestirClick(investimento)}
+                      disabled={investimento.totalInvestido >= investimento.valor}
+                    >
+                      {investimento.totalInvestido >= investimento.valor 
+                        ? "Investimento Concluído" 
+                        : "Investir Agora"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </main>
       </div>
 
-      {/* Modal de Investimento */}
+      {/* MODAL DE INVESTIMENTO */}
       {isModalOpen && selectedInvestimento && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
-          onClick={handleCloseModal}
-          style={{ animation: 'fadeIn 0.3s ease-out' }}
-        >
-          <div 
-            className="bg-white rounded-2xl max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-            style={{ animation: 'slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
-          >
-            {!showQRCode && !showSuccess && (
-              <>
-                {/* Header do Modal */}
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-brand-purple-dark">
-                    Investir em {selectedInvestimento.nome}
-                  </h2>
-                  <button
-                    onClick={handleCloseModal}
-                    className="text-gray-500 hover:text-gray-700 text-2xl"
-                  >
-                    ×
-                  </button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-6 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="text-center">
+              <h3 className="text-xl font-bold mb-4">
+                Investir em {selectedInvestimento.nome}
+              </h3>
+
+              {/* Informações do investimento */}
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex justify-between text-sm mb-2">
+                  <span>Valor total:</span>
+                  <span className="font-semibold">
+                    {formatarMoeda(selectedInvestimento.valor)}
+                  </span>
                 </div>
-
-                {/* Informações do Investimento */}
-                <div className="mb-6 space-y-3">
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-gray-600">Tomador:</span>
-                      <span className="text-sm font-semibold text-gray-800">
-                        {selectedInvestimento.tomador}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-gray-600">Taxa de Juros:</span>
-                      <span className="text-sm font-semibold text-green-600">
-                        {selectedInvestimento.taxaJuros}% a.m.
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Prazo:</span>
-                      <span className="text-sm font-semibold text-gray-800">
-                        {selectedInvestimento.prazo} meses
-                      </span>
-                    </div>
-                  </div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span>Já investido:</span>
+                  <span className="text-green-600">
+                    {formatarMoeda(selectedInvestimento.totalInvestido)}
+                  </span>
                 </div>
-
-                {/* Valores Mínimo e Máximo */}
-                <div className="mb-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Valor Mínimo</p>
-                      <p className="text-lg font-bold text-brand-purple-dark">
-                        {formatarMoeda(selectedInvestimento.valorMinimo)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">Valor Máximo Disponível</p>
-                      <p className="text-lg font-bold text-brand-purple-dark">
-                        {formatarMoeda(selectedInvestimento.valorTotal - selectedInvestimento.valorArrecadado)}
-                      </p>
-                    </div>
-                  </div>
+                <div className="flex justify-between text-sm">
+                  <span>Disponível:</span>
+                  <span className="text-brand-purple-dark font-semibold">
+                    {formatarMoeda(
+                      selectedInvestimento.valor - 
+                      (selectedInvestimento.totalInvestido || 0)
+                    )}
+                  </span>
                 </div>
-
-                {/* Slider de Valor */}
-                <div className="mb-8">
-                  <label className="block text-sm font-semibold text-gray-700 mb-4 text-center">
-                    Valor do Investimento
-                  </label>
-                  
-                  {/* Valor Exibido */}
-                  <div className="text-center mb-6">
-                    <div className={`inline-block transition-all duration-500 ease-out ${isDragging ? 'scale-110 rotate-1' : 'scale-100 rotate-0'}`}>
-                      <div className={`bg-gradient-to-r from-brand-pink to-brand-purple-dark text-white px-8 py-4 rounded-2xl shadow-xl relative overflow-hidden ${isDragging ? 'shadow-2xl shadow-brand-pink/50' : ''}`}>
-                        {/* Efeito de brilho animado */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 animate-shimmer"></div>
-                        <p className="text-3xl font-bold relative z-10">
-                          {formatarMoeda(valorInvestimento)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Slider Container */}
-                  <div className="relative">
-                    {/* Track de fundo */}
-                    <div className="h-4 bg-gray-200 rounded-full relative overflow-hidden shadow-inner">
-                      {/* Track preenchido com gradiente animado */}
-                      <div
-                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-brand-pink via-brand-purple-dark to-brand-pink rounded-full transition-all duration-500 ease-out overflow-hidden"
-                        style={{
-                          width: `${getSliderPercentage()}%`,
-                          backgroundSize: '200% 100%',
-                          animation: isDragging ? 'gradient-shift 1.5s ease infinite' : 'none'
-                        }}
-                      >
-                        {/* Efeito de brilho animado */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent transform -skew-x-12 animate-shimmer"></div>
-                        {/* Efeito de pulso suave */}
-                        <div className={`absolute inset-0 bg-white transition-opacity duration-300 ${isDragging ? 'opacity-30 animate-pulse' : 'opacity-0'}`}></div>
-                      </div>
-                    </div>
-
-                    {/* Slider Input */}
-                    <input
-                      type="range"
-                      min={selectedInvestimento.valorMinimo}
-                      max={selectedInvestimento.valorTotal - selectedInvestimento.valorArrecadado}
-                      step={100}
-                      value={valorInvestimento}
-                      onChange={handleSliderChange}
-                      onMouseDown={handleSliderMouseDown}
-                      onMouseUp={handleSliderMouseUp}
-                      onTouchStart={handleSliderMouseDown}
-                      onTouchEnd={handleSliderMouseUp}
-                      className="absolute top-0 left-0 w-full h-3 opacity-0 cursor-pointer z-10 -mt-1"
-                      style={{ WebkitAppearance: 'none', appearance: 'none' }}
-                    />
-
-                    {/* Marcadores */}
-                    <div className="flex justify-between mt-2 text-xs text-gray-500">
-                      <span>{formatarMoeda(selectedInvestimento.valorMinimo)}</span>
-                      <span>{formatarMoeda(selectedInvestimento.valorTotal - selectedInvestimento.valorArrecadado)}</span>
-                    </div>
-
-                    {/* Indicador visual do valor */}
-                    <div
-                      className="absolute top-0 left-0 transform -translate-y-1/2 transition-all duration-500 ease-out pointer-events-none"
-                      style={{ left: `calc(${getSliderPercentage()}% - 14px)` }}
-                    >
-                      <div className={`relative ${isDragging ? 'scale-150' : 'scale-100'} transition-all duration-300 ease-out`}>
-                        {/* Círculo do slider */}
-                        <div className="w-7 h-7 bg-white border-4 border-brand-pink rounded-full shadow-xl flex items-center justify-center relative z-10">
-                          <div className="w-2.5 h-2.5 bg-brand-pink rounded-full"></div>
-                          {/* Brilho interno */}
-                          <div className="absolute top-1 left-1 w-2 h-2 bg-white/60 rounded-full"></div>
-                        </div>
-                        {/* Efeito de pulso quando arrastando */}
-                        {isDragging && (
-                          <>
-                            <div className="absolute inset-0 w-7 h-7 bg-brand-pink rounded-full animate-ping opacity-60"></div>
-                            <div className="absolute inset-0 w-7 h-7 bg-brand-pink rounded-full animate-ping opacity-40" style={{ animationDelay: '0.2s' }}></div>
-                            <div className="absolute inset-0 w-7 h-7 bg-brand-pink rounded-full animate-ping opacity-20" style={{ animationDelay: '0.4s' }}></div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Botões de incremento rápido */}
-                  <div className="flex justify-center gap-3 mt-6 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const valorMin = selectedInvestimento.valorMinimo;
-                        const valorMax = selectedInvestimento.valorTotal - selectedInvestimento.valorArrecadado;
-                        const step = (valorMax - valorMin) / 4;
-                        setValorInvestimento(Math.max(valorMin, valorInvestimento - step));
-                      }}
-                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold text-gray-700 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md"
-                    >
-                      -25%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const valorMin = selectedInvestimento.valorMinimo;
-                        const valorMax = selectedInvestimento.valorTotal - selectedInvestimento.valorArrecadado;
-                        const meio = (valorMin + valorMax) / 2;
-                        setValorInvestimento(meio);
-                      }}
-                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold text-gray-700 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md"
-                    >
-                      50%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const valorMin = selectedInvestimento.valorMinimo;
-                        const valorMax = selectedInvestimento.valorTotal - selectedInvestimento.valorArrecadado;
-                        const step = (valorMax - valorMin) / 4;
-                        setValorInvestimento(Math.min(valorMax, valorInvestimento + step));
-                      }}
-                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold text-gray-700 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md"
-                    >
-                      +25%
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const valorMax = selectedInvestimento.valorTotal - selectedInvestimento.valorArrecadado;
-                        setValorInvestimento(valorMax);
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-brand-pink to-brand-purple-dark text-white rounded-lg font-semibold hover:shadow-xl hover:scale-105 transition-all duration-300 active:scale-95 hover:from-brand-purple-dark hover:to-brand-pink"
-                    >
-                      Máximo
-                    </button>
-                  </div>
-                </div>
-
-                {/* Botões */}
-                <div className="flex space-x-4">
-                  <button
-                    onClick={handleCloseModal}
-                    className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleConfirmar}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-brand-pink to-brand-purple-dark hover:from-brand-purple-dark hover:to-brand-pink text-white rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 active:scale-95 relative overflow-hidden group"
-                  >
-                    <span className="relative z-10">Confirmar</span>
-                    <div className="absolute inset-0 bg-gradient-to-r from-brand-purple-dark to-brand-pink opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* Tela de QR Code */}
-            {showQRCode && !showSuccess && (
-              <div className="text-center" style={{ animation: 'fadeInScale 0.5s ease-out' }}>
-                <h2 className="text-2xl font-bold text-brand-purple-dark mb-6 animate-pulse">
-                  Escaneie o QR Code para confirmar
-                </h2>
-                <div className="bg-white p-6 rounded-lg inline-block mb-6 border-4 border-gray-200 shadow-2xl relative overflow-hidden" style={{ animation: 'scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
-                  {/* Efeito de brilho rotativo */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-brand-pink/10 to-transparent transform -skew-x-12 animate-shimmer"></div>
-                  {/* QR Code Falso */}
-                  <div className="w-64 h-64 bg-white flex items-center justify-center relative border-2 border-gray-300" style={{ display: 'grid', gridTemplateColumns: 'repeat(25, 1fr)', gap: '1px', padding: '8px' }}>
-                    {Array.from({ length: 625 }).map((_, i) => {
-                      const row = Math.floor(i / 25);
-                      const col = i % 25;
-                      // Criar padrão simétrico que parece QR code
-                      const isBlack = 
-                        // Cantos superiores esquerdo e direito
-                        (row < 7 && col < 7) || (row < 7 && col >= 18) ||
-                        // Canto inferior esquerdo
-                        (row >= 18 && col < 7) ||
-                        // Padrão no meio (mas fixo)
-                        ((row * 7 + col * 11) % 3 === 0 && row >= 7 && row < 18 && col >= 7 && col < 18) ||
-                        // Linhas e colunas estratégicas
-                        row === 0 || row === 24 || col === 0 || col === 24 ||
-                        row === 6 || row === 18 || col === 6 || col === 18;
-                      return (
-                        <div
-                          key={i}
-                          className={isBlack ? 'bg-black' : 'bg-white'}
-                          style={{ aspectRatio: '1' }}
-                        />
-                      );
-                    })}
-                    {/* Marcadores de posição (cantos) */}
-                    <div className="absolute top-2 left-2 w-20 h-20 border-4 border-black pointer-events-none">
-                      <div className="absolute top-1 left-1 w-14 h-14 border-4 border-black"></div>
-                      <div className="absolute top-4 left-4 w-6 h-6 bg-black"></div>
-                    </div>
-                    <div className="absolute top-2 right-2 w-20 h-20 border-4 border-black pointer-events-none">
-                      <div className="absolute top-1 right-1 w-14 h-14 border-4 border-black"></div>
-                      <div className="absolute top-4 right-4 w-6 h-6 bg-black"></div>
-                    </div>
-                    <div className="absolute bottom-2 left-2 w-20 h-20 border-4 border-black pointer-events-none">
-                      <div className="absolute bottom-1 left-1 w-14 h-14 border-4 border-black"></div>
-                      <div className="absolute bottom-4 left-4 w-6 h-6 bg-black"></div>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-gray-600 animate-pulse">
-                  Processando pagamento...
-                </p>
               </div>
-            )}
 
-            {/* Tela de Sucesso */}
-            {showSuccess && (
-              <div className="text-center" style={{ animation: 'fadeInScale 0.5s ease-out' }}>
-                <div className="mb-6 relative">
-                  {/* Círculo de fundo animado */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-32 h-32 bg-gradient-to-r from-brand-pink/20 to-brand-purple-dark/20 rounded-full animate-ping"></div>
-                    <div className="absolute w-28 h-28 bg-gradient-to-r from-brand-pink/30 to-brand-purple-dark/30 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                  </div>
-                  {/* Ícone de sucesso */}
-                  <div className="relative w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto shadow-2xl" style={{ animation: 'scaleInBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
-                    <svg
-                      className="w-16 h-16 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      style={{ animation: 'checkmark 0.5s ease-out 0.3s both' }}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={4}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </div>
+              {/* Slider ou input de valor */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Valor do Investimento: {formatarMoeda(valorInvestimento)}
+                </label>
+                <input
+                  type="range"
+                  min={selectedInvestimento.valorMinimo || 0}
+                  max={
+                    selectedInvestimento.valor -
+                    (selectedInvestimento.totalInvestido || 0)
+                  }
+                  step="100"
+                  value={valorInvestimento}
+                  onChange={handleSliderChange}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>
+                    {formatarMoeda(selectedInvestimento.valorMinimo || 0)}
+                  </span>
+                  <span>
+                    {formatarMoeda(
+                      selectedInvestimento.valor -
+                        (selectedInvestimento.totalInvestido || 0)
+                    )}
+                  </span>
                 </div>
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-brand-pink to-brand-purple-dark bg-clip-text text-transparent mb-4" style={{ animation: 'fadeInUp 0.6s ease-out 0.3s both' }}>
-                  Investimento feito com sucesso!
-                </h2>
-                <p className="text-gray-700 mb-2 text-lg font-semibold" style={{ animation: 'fadeInUp 0.6s ease-out 0.4s both' }}>
-                  Você investiu <span className="text-brand-pink font-bold">{formatarMoeda(valorInvestimento)}</span>
-                </p>
-                <p className="text-sm text-gray-500" style={{ animation: 'fadeInUp 0.6s ease-out 0.5s both' }}>
-                  Obrigado por investir em {selectedInvestimento.nome}
-                </p>
               </div>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* Toast Notification */}
-      {toast && (
-        <div 
-          className="fixed top-4 right-4 z-50 max-w-md"
-          style={{ animation: 'slideInRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
-        >
-          <div className={`rounded-xl shadow-2xl p-4 flex items-center gap-4 ${
-            toast.type === 'error' 
-              ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' 
-              : 'bg-gradient-to-r from-brand-pink to-brand-purple-dark text-white'
-          }`}>
-            <div className="flex-shrink-0">
-              {toast.type === 'error' ? (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+              {/* Estados do modal */}
+              {showQRCode && (
+                <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-yellow-700">Processando pagamento...</p>
+                </div>
               )}
+
+              {showSuccess && (
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-700">Investimento realizado com sucesso!</p>
+                </div>
+              )}
+
+              {/* Botões */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCloseModal}
+                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors"
+                  disabled={showQRCode || showSuccess}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmar}
+                  className="flex-1 bg-brand-pink text-white py-3 rounded-lg font-semibold hover:bg-brand-pink-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={showQRCode || showSuccess}
+                >
+                  {showQRCode ? "Processando..." : 
+                   showSuccess ? "Concluído!" : "Confirmar"}
+                </button>
+              </div>
             </div>
-            <p className="flex-1 font-semibold">{toast.message}</p>
-            <button
-              onClick={() => setToast(null)}
-              className="flex-shrink-0 hover:opacity-80 transition-opacity"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
         </div>
       )}
     </div>
   );
 }
-

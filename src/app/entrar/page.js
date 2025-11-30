@@ -1,68 +1,140 @@
-'use client';
+"use client";
 
-// src/app/entrar/page.js
-
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Header from '../components/Header';
-import Link from 'next/link';
-import { login } from '../utils/auth';
+import { useState, useContext, useEffect } from "react"; // 🔥 Adicione useEffect
+import { useRouter } from "next/navigation";
+import Header from "../components/Header";
+import Link from "next/link";
+import { AuthContext } from "@/app/utils/authContext";
+import { authService } from "@/services/authService";
 
 export default function Entrar() {
   const router = useRouter();
+  const { login, autenticado, loading, usuario } = useContext(AuthContext); // 🔥 Adicione estas props
+
   const [formData, setFormData] = useState({
-    email: '',
-    senha: ''
+    email: "",
+    senha: "",
   });
+
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
+
+  // 🔥 NOVO: Redirecionar usuários já autenticados
+  useEffect(() => {
+    if (!loading && autenticado && usuario) {
+      console.log("Usuário já autenticado, redirecionando...", usuario);
+      
+      const role = usuario.role || usuario.tipo;
+      const redirectMap = {
+        'investidor': '/dashboard-investidor',
+        'tomador': '/dashboard-tomador', 
+        'admin': '/dashboard-admin'
+      };
+
+      const redirectPath = redirectMap[role] || '/dashboard';
+      router.push(redirectPath);
+    }
+  }, [autenticado, loading, usuario, router]);
 
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setMessage('');
+    setMessage("");
 
-    // Validação básica
     if (!formData.email || !formData.senha) {
-      setMessage('Por favor, preencha todos os campos.');
+      setMessage("Por favor, preencha todos os campos.");
       setIsLoading(false);
       return;
     }
 
-    // Validação de email
     const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
     if (!emailRegex.test(formData.email)) {
-      setMessage('Email inválido.');
+      setMessage("Email inválido.");
       setIsLoading(false);
       return;
     }
 
-    // Tentar fazer login
-    const result = login(formData.email, formData.senha);
-    
-    if (result.success) {
-      setMessage('Login realizado com sucesso! Redirecionando...');
+    try {
+      // 🔥 Chamada ao backend
+      const data = await authService.login({
+        email: formData.email,
+        senha: formData.senha,
+      });
+
+      console.log("Resposta do login:", data);
+
+      if (!data || !data.token || !data.usuario) {
+        throw new Error("Resposta inesperada do servidor.");
+      }
+
+      // 🔥 Alimentar o AuthContext
+      const loginSuccess = login({
+        usuario: data.usuario,
+        token: data.token,
+      });
+
+      if (!loginSuccess) {
+        throw new Error("Erro ao salvar dados de autenticação.");
+      }
+
+      setMessage("Login realizado com sucesso! Redirecionando...");
+
+      // 🔥 REDIRECIONAMENTO BASEADO NA ROLE
       setTimeout(() => {
-        // Redirecionar baseado no tipo de usuário
-        if (result.user.tipo === 'investidor') {
-          router.push('/dashboard-investidor');
-        } else {
-          router.push('/dashboard-tomador');
-        }
-      }, 1500);
-    } else {
-      setMessage(result.message);
+        const role = data.usuario.role || data.usuario.tipo;
+        
+        console.log("Role do usuário:", role);
+
+        const redirectMap = {
+          'investidor': '/dashboard-investidor',
+          'tomador': '/dashboard-tomador', 
+          'admin': '/dashboard-admin'
+        };
+
+        const redirectPath = redirectMap[role] || '/';
+        
+        console.log("Redirecionando para:", redirectPath);
+        router.push(redirectPath);
+        
+      }, 1200);
+
+    } catch (error) {
+      console.error("Erro no login:", error);
+      setMessage(error.message || "Erro ao fazer login. Verifique suas credenciais.");
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
+
+  // 🔥 MOSTRAR LOADING ENQUANTO VERIFICA AUTENTICAÇÃO
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-hero-gradient flex items-center justify-center">
+          <p className="text-white text-xl">Verificando autenticação...</p>
+        </main>
+      </>
+    );
+  }
+
+  // 🔥 NÃO MOSTRAR FORMULÁRIO SE JÁ ESTIVER AUTENTICADO (será redirecionado pelo useEffect)
+  if (autenticado) {
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-hero-gradient flex items-center justify-center">
+          <p className="text-white text-xl">Redirecionando...</p>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -70,24 +142,23 @@ export default function Entrar() {
       <main className="min-h-screen bg-hero-gradient">
         <div className="container mx-auto px-4 py-20">
           <div className="max-w-md mx-auto">
-            
             {/* Título */}
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold text-white mb-2">
                 Bem-vindo de volta
               </h1>
-              <p className="text-white/70">
-                Entre na sua conta para continuar
-              </p>
+              <p className="text-white/70">Entre na sua conta para continuar</p>
             </div>
 
             {/* Mensagem */}
             {message && (
-              <div className={`p-4 rounded-full text-center mb-6 ${
-                message.includes('sucesso') 
-                  ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
-                  : 'bg-red-500/20 text-red-300 border border-red-500/30'
-              }`}>
+              <div
+                className={`p-4 rounded-full text-center mb-6 ${
+                  message.includes("sucesso")
+                    ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                    : "bg-red-500/20 text-red-300 border border-red-500/30"
+                }`}
+              >
                 {message}
               </div>
             )}
@@ -103,6 +174,7 @@ export default function Entrar() {
                   value={formData.email}
                   onChange={handleInputChange}
                   className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-4 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all duration-300"
+                  disabled={isLoading}
                 />
                 <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/70">
                   ✉️
@@ -118,6 +190,7 @@ export default function Entrar() {
                   value={formData.senha}
                   onChange={handleInputChange}
                   className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-4 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all duration-300"
+                  disabled={isLoading}
                 />
                 <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/70">
                   🔒
@@ -126,7 +199,10 @@ export default function Entrar() {
 
               {/* Esqueci a senha */}
               <div className="text-right">
-                <Link href="/esqueci-senha" className="text-brand-pink hover:text-brand-pink-light transition-colors text-sm">
+                <Link
+                  href="/esqueci-senha"
+                  className="text-brand-pink hover:text-brand-pink-light transition-colors text-sm"
+                >
                   Esqueci minha senha
                 </Link>
               </div>
@@ -137,7 +213,7 @@ export default function Entrar() {
                 disabled={isLoading}
                 className="w-full bg-brand-pink hover:bg-brand-pink-light text-white font-bold py-4 px-8 rounded-full text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Entrando...' : 'Entrar'}
+                {isLoading ? "Entrando..." : "Entrar"}
               </button>
             </form>
 
@@ -150,7 +226,10 @@ export default function Entrar() {
 
             {/* Botão Cadastrar */}
             <Link href="/registro">
-              <button className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold py-4 px-8 rounded-full text-lg transition-all duration-300 transform hover:scale-105 hover:bg-white/20">
+              <button 
+                className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold py-4 px-8 rounded-full text-lg transition-all duration-300 transform hover:scale-105 hover:bg-white/20"
+                disabled={isLoading}
+              >
                 Criar nova conta
               </button>
             </Link>
@@ -158,8 +237,11 @@ export default function Entrar() {
             {/* Link para Cadastro */}
             <div className="text-center mt-6">
               <p className="text-white/70">
-                Não tem uma conta?{' '}
-                <Link href="/registro" className="text-brand-pink hover:text-brand-pink-light transition-colors">
+                Não tem uma conta?{" "}
+                <Link
+                  href="/registro"
+                  className="text-brand-pink hover:text-brand-pink-light transition-colors"
+                >
                   Cadastre-se
                 </Link>
               </p>
