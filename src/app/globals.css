@@ -188,4 +188,38 @@
       transform: translateX(0) scale(1);
     }
   }
+
+  /* Classes de animação */
+  .animate-fadeIn {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  .animate-slideUp {
+    animation: slideUp 0.6s ease-out forwards;
+  }
+
+  .animate-fadeInScale {
+    animation: fadeInScale 0.8s ease-out forwards;
+  }
+
+  .animate-scaleIn {
+    animation: scaleIn 0.5s ease-out forwards;
+  }
+
+  .animate-scaleInBounce {
+    animation: scaleInBounce 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+  }
+
+  .animate-fadeInUp {
+    animation: fadeInUp 0.6s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-slideInRight {
+    animation: slideInRight 0.8s ease-out forwards;
+  }
+
+  .animate-checkmark {
+    animation: checkmark 0.6s ease-out forwards;
+  }
 }
