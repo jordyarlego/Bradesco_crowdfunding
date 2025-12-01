@@ -103,19 +103,23 @@ export default function SolicitarEmprestimo() {
 
         {/* FORMULÁRIO */}
         <div className="bg-white p-6 rounded-xl shadow">
-          <label className="font-medium">Valor desejado:</label>
+          <label className="font-medium flex items-center gap-2">
+            <img src="/logo.png" alt="Projeto" className="w-6 h-6 inline-block align-middle" /> Valor desejado:
+          </label>
           <input
             type="number"
-            className="w-full p-2 border rounded mb-4"
+            className="w-full p-2 border rounded mb-4 text-gray-900 font-bold text-lg"
             value={valor}
             onChange={(e) => setValor(e.target.value)}
+            style={{ color: '#1a202c', fontWeight: 700, fontSize: '1.25rem', background: '#fff' }}
           />
 
           <label className="font-medium">Parcelas:</label>
           <select
-            className="w-full p-2 border rounded mb-4"
+            className="w-full p-2 border rounded mb-4 text-gray-900 font-bold text-lg"
             value={parcelas}
             onChange={(e) => setParcelas(e.target.value)}
+            style={{ color: '#1a202c', fontWeight: 700, fontSize: '1.25rem', background: '#fff' }}
           >
             {[6, 12, 18, 24, 36, 48].map((p) => (
               <option key={p} value={p}>{p}x</option>
@@ -136,7 +140,7 @@ export default function SolicitarEmprestimo() {
             <h2 className="text-xl font-semibold mb-4">Resultado:</h2>
 
             <p>Taxa mensal: <b>{(resultado.taxa * 100).toFixed(2)}%</b></p>
-            <p>Valor total: <b>R${resultado.valorTotal.toFixed(2)}</b></p>
+            <p>Valor total: <b style={{ color: '#1a202c', background: '#fff', padding: '2px 8px', borderRadius: '6px' }}>R${resultado.valorTotal.toFixed(2)}</b></p>
 
             <button
               className="mt-4 bg-green-600 text-white px-4 py-2 rounded shadow"

@@ -243,9 +243,14 @@ export default function PoolDeInvestimentos() {
       
       <div className="flex-1 flex flex-col">
         <header className="bg-white px-8 py-6 flex items-center justify-between shadow-sm">
-          <h1 className="text-2xl font-bold text-brand-purple-dark">
-            Pool de Investimentos
-          </h1>
+          <div>
+            <h1 className="text-2xl font-bold text-brand-purple-dark">
+              Pool de Investimentos
+            </h1>
+            <div className="mt-2 text-sm text-brand-purple-dark font-semibold bg-brand-pink/10 px-4 py-2 rounded-full inline-block shadow-sm animate-fadeInUp">
+              Saldo disponível: {usuario?.saldo !== undefined ? formatarMoeda(usuario.saldo) : 'R$ 0,00'}
+            </div>
+          </div>
           <input
             type="text"
             placeholder="Buscar investimentos..."
@@ -361,63 +366,77 @@ export default function PoolDeInvestimentos() {
 
       {/* MODAL DE INVESTIMENTO */}
       {isModalOpen && selectedInvestimento && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-6 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <div className="text-center">
-              <h3 className="text-xl font-bold mb-4">
-                Investir em {selectedInvestimento.nome}
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-lg flex items-center justify-center p-6 z-50 animate-fadeIn">
+          <div className="bg-gradient-to-br from-white via-gray-50 to-brand-pink/10 rounded-3xl p-8 w-full max-w-lg shadow-2xl border-2 border-brand-pink/20 animate-scaleInBounce relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-48 h-48 bg-brand-pink/10 rounded-full blur-3xl animate-float" />
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-brand-purple-dark/10 rounded-full blur-2xl animate-float" />
+            <div className="text-center relative z-10">
+              <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-brand-pink to-brand-purple-dark rounded-2xl flex items-center justify-center shadow-xl animate-scaleInBounce">
+                <img src="/logo.png" alt="Projeto" className="w-10 h-10" />
+              </div>
+              <h3 className="text-2xl font-extrabold mb-4 text-brand-purple-dark animate-fadeInUp">
+                Investir em <span className="text-brand-pink">{selectedInvestimento.nome}</span>
               </h3>
 
               {/* Informações do investimento */}
-              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                <div className="flex justify-between text-sm mb-2">
+              <div className="mb-6 p-4 bg-gray-100/90 rounded-xl shadow animate-slideUp text-left">
+                <div className="flex justify-between text-base mb-2 font-medium text-gray-700">
                   <span>Valor total:</span>
-                  <span className="font-semibold">
+                  <span className="font-bold text-brand-purple-dark">
                     {formatarMoeda(selectedInvestimento.valor)}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm mb-2">
+                <div className="flex justify-between text-base mb-2 font-medium text-gray-700">
                   <span>Já investido:</span>
-                  <span className="text-green-600">
+                  <span className="font-bold text-green-700">
                     {formatarMoeda(selectedInvestimento.totalInvestido)}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-base mb-2 font-medium text-gray-700">
                   <span>Disponível:</span>
-                  <span className="text-brand-purple-dark font-semibold">
+                  <span className="font-bold text-brand-purple-dark">
                     {formatarMoeda(
                       selectedInvestimento.valor - 
                       (selectedInvestimento.totalInvestido || 0)
                     )}
                   </span>
                 </div>
+                <div className="flex justify-between text-base font-medium text-gray-700">
+                  <span>Seu saldo:</span>
+                  <span className="font-bold text-brand-pink">
+                    {usuario?.saldo !== undefined ? formatarMoeda(usuario.saldo) : 'R$ 0,00'}
+                  </span>
+                </div>
               </div>
 
               {/* Slider ou input de valor */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Valor do Investimento: {formatarMoeda(valorInvestimento)}
+              <div className="mb-8 animate-fadeInUp">
+                <label className="block text-base font-bold text-brand-purple-dark mb-3">
+                  Valor do Investimento: <span className="text-brand-pink">{formatarMoeda(valorInvestimento)}</span>
                 </label>
                 <input
                   type="range"
                   min={selectedInvestimento.valorMinimo || 0}
-                  max={
-                    selectedInvestimento.valor -
-                    (selectedInvestimento.totalInvestido || 0)
-                  }
+                  max={Math.min(
+                    selectedInvestimento.valor - (selectedInvestimento.totalInvestido || 0),
+                    usuario?.saldo || 0
+                  )}
                   step="100"
                   value={valorInvestimento}
                   onChange={handleSliderChange}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-3 bg-brand-purple-light rounded-lg appearance-none cursor-pointer slider-thumb shadow-lg"
+                  style={{ accentColor: '#D9266F' }}
                 />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <div className="flex justify-between text-xs text-gray-700 mt-1 font-semibold">
                   <span>
                     {formatarMoeda(selectedInvestimento.valorMinimo || 0)}
                   </span>
                   <span>
                     {formatarMoeda(
-                      selectedInvestimento.valor -
-                        (selectedInvestimento.totalInvestido || 0)
+                      Math.min(
+                        selectedInvestimento.valor - (selectedInvestimento.totalInvestido || 0),
+                        usuario?.saldo || 0
+                      )
                     )}
                   </span>
                 </div>
@@ -425,29 +444,29 @@ export default function PoolDeInvestimentos() {
 
               {/* Estados do modal */}
               {showQRCode && (
-                <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-yellow-700">Processando pagamento...</p>
+                <div className="mb-6 p-4 bg-yellow-100 border border-yellow-300 rounded-xl animate-fadeInUp">
+                  <p className="text-yellow-800 font-bold animate-pulse">Processando pagamento...</p>
                 </div>
               )}
 
               {showSuccess && (
-                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-green-700">Investimento realizado com sucesso!</p>
+                <div className="mb-6 p-4 bg-green-100 border border-green-300 rounded-xl animate-fadeInUp">
+                  <p className="text-green-800 font-bold animate-fadeInUp">Investimento realizado com sucesso!</p>
                 </div>
               )}
 
               {/* Botões */}
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2 animate-fadeInUp">
                 <button
                   onClick={handleCloseModal}
-                  className="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-colors"
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-brand-purple-dark font-bold py-4 px-6 rounded-xl transition-all duration-300 border-2 border-gray-200 shadow"
                   disabled={showQRCode || showSuccess}
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleConfirmar}
-                  className="flex-1 bg-brand-pink text-white py-3 rounded-lg font-semibold hover:bg-brand-pink-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-gradient-to-r from-brand-pink to-brand-purple-dark hover:from-brand-purple-dark hover:to-brand-pink text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={showQRCode || showSuccess}
                 >
                   {showQRCode ? "Processando..." : 
