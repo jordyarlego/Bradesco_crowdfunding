@@ -298,6 +298,15 @@ export default function PoolDeInvestimentos() {
                   investimento.totalInvestido,
                   investimento.valor
                 );
+                // Defensive: handle nested aplicacoes, id types, and fallback to false
+                let usuarioJaInvestiu = false;
+                if (Array.isArray(investimento.aplicacoes)) {
+                  usuarioJaInvestiu = investimento.aplicacoes.some((aplic) => {
+                    // Defensive: check both id and usuarioId, and both as string/number
+                    const aId = aplic.usuarioId ?? aplic.idUsuario ?? aplic.userId;
+                    return String(aId) === String(usuario?.id);
+                  });
+                }
 
                 return (
                   <div
@@ -357,10 +366,11 @@ export default function PoolDeInvestimentos() {
                     </div>
 
                     <button
-                      className="w-full bg-gradient-to-r from-brand-pink to-brand-purple-dark text-white rounded-full py-3 font-semibold hover:opacity-90 transition-opacity"
+                      className={`w-full rounded-full py-3 font-semibold transition-opacity hover:opacity-90 ${usuarioJaInvestiu ? "bg-gray-300 text-gray-400 cursor-not-allowed" : "bg-gradient-to-r from-brand-pink to-brand-purple-dark text-white"}`}
                       onClick={() => handleInvestirClick(investimento)}
+                      disabled={usuarioJaInvestiu}
                     >
-                      Investir Agora
+                      {usuarioJaInvestiu ? "Você já investiu" : "Investir Agora"}
                     </button>
                   </div>
                 );
