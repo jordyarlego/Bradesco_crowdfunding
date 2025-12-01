@@ -357,15 +357,10 @@ export default function PoolDeInvestimentos() {
                     </div>
 
                     <button
-                      className="w-full bg-gradient-to-r from-brand-pink to-brand-purple-dark text-white rounded-full py-3 font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-gradient-to-r from-brand-pink to-brand-purple-dark text-white rounded-full py-3 font-semibold hover:opacity-90 transition-opacity"
                       onClick={() => handleInvestirClick(investimento)}
-                      disabled={
-                        investimento.totalInvestido >= investimento.valor
-                      }
                     >
-                      {investimento.totalInvestido >= investimento.valor
-                        ? "Investimento Concluído"
-                        : "Investir Agora"}
+                      Investir Agora
                     </button>
                   </div>
                 );
@@ -377,6 +372,7 @@ export default function PoolDeInvestimentos() {
 
       {/* MODAL DE INVESTIMENTO */}
       {isModalOpen && selectedInvestimento && (
+        <>
         <div className="fixed inset-0 bg-black/60 backdrop-blur-lg flex items-center justify-center p-6 z-50 animate-fadeIn">
           <div className="bg-gradient-to-br from-white via-gray-50 to-brand-pink/10 rounded-3xl p-8 w-full max-w-lg shadow-2xl border-2 border-brand-pink/20 animate-scaleInBounce relative overflow-hidden">
             <div className="absolute -top-10 -right-10 w-48 h-48 bg-brand-pink/10 rounded-full blur-3xl animate-float" />
@@ -436,14 +432,17 @@ export default function PoolDeInvestimentos() {
                 <input
                   type="range"
                   min={selectedInvestimento.valorMinimo || 0}
-                  max={Math.min(
-                    selectedInvestimento.valor -
-                      (selectedInvestimento.totalInvestido || 0),
-                    usuario?.saldo || 0
+                  max={Math.max(
+                    Math.min(
+                      selectedInvestimento.valor - (selectedInvestimento.totalInvestido || 0),
+                      saldoDisponivel || 0
+                    ),
+                    selectedInvestimento.valorMinimo || 0
                   )}
                   step="100"
                   value={valorInvestimento}
                   onChange={handleSliderChange}
+                  disabled={saldoDisponivel < (selectedInvestimento.valorMinimo || 0)}
                   className="w-full h-3 bg-brand-purple-light rounded-lg appearance-none cursor-pointer slider-thumb shadow-lg"
                   style={{ accentColor: "#D9266F" }}
                 />
@@ -465,18 +464,29 @@ export default function PoolDeInvestimentos() {
 
               {/* Estados do modal */}
               {showQRCode && (
-                <div className="mb-6 p-4 bg-yellow-100 border border-yellow-300 rounded-xl animate-fadeInUp">
-                  <p className="text-yellow-800 font-bold animate-pulse">
-                    Processando pagamento...
-                  </p>
+                <div className="mb-8 animate-fadeInUp">
+                  <div className="flex flex-col items-center justify-center gap-4">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-yellow-400 to-brand-pink flex items-center justify-center shadow-xl animate-float">
+                      <svg className="w-12 h-12 text-yellow-600 animate-spin-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" strokeWidth="4" className="opacity-30" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M12 2a10 10 0 0 1 10 10" />
+                      </svg>
+                    </div>
+                    <p className="text-lg font-bold text-yellow-700 animate-pulse">Processando pagamento...</p>
+                  </div>
                 </div>
               )}
 
               {showSuccess && (
-                <div className="mb-6 p-4 bg-green-100 border border-green-300 rounded-xl animate-fadeInUp">
-                  <p className="text-green-800 font-bold animate-fadeInUp">
-                    Investimento realizado com sucesso!
-                  </p>
+                <div className="mb-8 animate-fadeInUp">
+                  <div className="flex flex-col items-center justify-center gap-4">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 via-brand-pink to-brand-purple-dark flex items-center justify-center shadow-xl animate-float">
+                      <svg className="w-12 h-12 text-white animate-pop" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="text-lg font-extrabold text-brand-purple-dark animate-fadeInUp">Investimento realizado com sucesso!</p>
+                  </div>
                 </div>
               )}
 
@@ -504,6 +514,24 @@ export default function PoolDeInvestimentos() {
             </div>
           </div>
         </div>
+        <style jsx global>{`
+          @keyframes spin-slow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          .animate-spin-slow {
+            animation: spin-slow 2s linear infinite;
+          }
+          @keyframes pop {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+          .animate-pop {
+            animation: pop 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+          }
+        `}</style>
+        </>
       )}
     </div>
   );
