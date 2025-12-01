@@ -2,25 +2,19 @@
 
 import { useState, useEffect, useContext } from "react";
 import { useRouter } from "next/navigation";
-
-// CORREÇÃO: Usar AuthContext em vez de funções diretas
 import { AuthContext } from "../../utils/authContext";
-
-// CORREÇÃO: Importar serviços com caminhos corretos
 import { investimentoService } from "../../../services/investimentoService";
 import { aplicacaoService } from "../../../services/aplicacaoService";
-
+import { usuarioService } from "@/services/usuarioService";
 import SidebarInvestidor from "../../components/SidebarInvestidor";
 
 export default function PoolDeInvestimentos() {
   const router = useRouter();
 
-  // CORREÇÃO: Usar contexto em vez de estado local
   const {
     usuario,
     autenticado,
     loading: authLoading,
-    isInvestor,
   } = useContext(AuthContext);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -30,38 +24,56 @@ export default function PoolDeInvestimentos() {
   const [selectedInvestimento, setSelectedInvestimento] = useState(null);
   const [valorInvestimento, setValorInvestimento] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [saldoDisponivel, setSaldoDisponivel] = useState();
 
   const [showQRCode, setShowQRCode] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const [toast, setToast] = useState(null);
 
-  // ----------------------------
-  //   VALIDAÇÕES DE LOGIN - CORRIGIDO
-  // ----------------------------
   useEffect(() => {
-    console.log("PoolInvestimentos - Estado auth:", {
-      autenticado,
-      authLoading,
-      usuario,
-      isInvestor: isInvestor(),
-    });
-
     if (!authLoading) {
-      if (!autenticado || !isInvestor()) {
-        console.log("PoolInvestimentos - Redirecionando para login");
+      if (!autenticado) {
         router.push("/entrar");
         return;
       }
 
-      console.log("PoolInvestimentos - Usuário autenticado como investidor");
       fetchInvestimentos();
+      carregarDados();
     }
-  }, [autenticado, authLoading, isInvestor, router, usuario]);
+  }, [autenticado, authLoading, router, usuario]);
 
-  // ----------------------------
-  //   BUSCA INVESTIMENTOS
-  // ----------------------------
+  const carregarDados = async () => {
+    const token = localStorage.getItem("authToken");
+
+    try {
+      setIsLoading(true);
+
+      const usuarioDados = await usuarioService.buscarPorId(usuario?.id);
+
+      setSaldoDisponivel(usuarioDados?.saldo);
+    } catch (error) {
+      console.error("❌ Erro ao carregar dados do dashboard:", error);
+
+      setToast({
+        type: "error",
+        message: error.message || "Erro ao carregar dados do investidor.",
+      });
+
+      if (
+        String(error.message).includes("401") ||
+        String(error.message).includes("Token")
+      ) {
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("userData");
+        await logout();
+        router.push("/entrar");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const fetchInvestimentos = async () => {
     try {
       console.log("Buscando investimentos...");
@@ -126,8 +138,7 @@ export default function PoolDeInvestimentos() {
     const valor = valorInvestimento;
     const min = selectedInvestimento.valorMinimo || 0;
     const max =
-      selectedInvestimento.valor -
-      (selectedInvestimento.totalInvestido || 0);
+      selectedInvestimento.valor - (selectedInvestimento.totalInvestido || 0);
 
     // Validação do valor
     if (valor < min) {
@@ -144,14 +155,13 @@ export default function PoolDeInvestimentos() {
       console.log("Enviando aplicação:", {
         investimentoId: selectedInvestimento.id,
         usuarioId: usuario.id,
-        valor: valor
+        valor: valor,
       });
 
-     
       const resultado = await aplicacaoService.aplicar(
-        usuario.id,                    // usuarioId (vai no body)
-        selectedInvestimento.id,      // investimentoId (vai como param na URL)
-        valor                         // valor (vai no body)        
+        usuario.id, // usuarioId (vai no body)
+        selectedInvestimento.id, // investimentoId (vai como param na URL)
+        valor // valor (vai no body)
       );
 
       console.log("Aplicação realizada com sucesso:", resultado);
@@ -170,13 +180,12 @@ export default function PoolDeInvestimentos() {
           showToast("Investimento realizado com sucesso!", "success");
         }, 2500);
       }, 2500);
-
     } catch (error) {
       console.error("Erro na aplicação:", error);
-      
+
       // Mensagens de erro mais específicas
       let errorMessage = "Erro ao realizar aplicação.";
-      
+
       if (error.message.includes("401") || error.message.includes("Token")) {
         errorMessage = "Sessão expirada. Faça login novamente.";
         localStorage.removeItem("authToken");
@@ -187,7 +196,7 @@ export default function PoolDeInvestimentos() {
       } else if (error.message.includes("500")) {
         errorMessage = "Erro interno do servidor. Tente novamente.";
       }
-      
+
       showToast(errorMessage);
     }
   };
@@ -210,14 +219,12 @@ export default function PoolDeInvestimentos() {
 
     const min = selectedInvestimento.valorMinimo || 0;
     const max =
-      selectedInvestimento.valor -
-      (selectedInvestimento.totalInvestido || 0);
+      selectedInvestimento.valor - (selectedInvestimento.totalInvestido || 0);
 
     if (max <= min) return 100;
     return ((valorInvestimento - min) / (max - min)) * 100;
   };
 
-  
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-hero-gradient flex items-center justify-center">
@@ -226,8 +233,7 @@ export default function PoolDeInvestimentos() {
     );
   }
 
-  
-  if (!autenticado || !isInvestor()) {
+  if (!autenticado) {
     return (
       <div className="min-h-screen bg-hero-gradient flex items-center justify-center">
         <div className="text-white text-xl">Redirecionando...</div>
@@ -237,10 +243,8 @@ export default function PoolDeInvestimentos() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      
       <SidebarInvestidor user={usuario} />
 
-      
       <div className="flex-1 flex flex-col">
         <header className="bg-white px-8 py-6 flex items-center justify-between shadow-sm">
           <div>
@@ -248,7 +252,10 @@ export default function PoolDeInvestimentos() {
               Pool de Investimentos
             </h1>
             <div className="mt-2 text-sm text-brand-purple-dark font-semibold bg-brand-pink/10 px-4 py-2 rounded-full inline-block shadow-sm animate-fadeInUp">
-              Saldo disponível: {usuario?.saldo !== undefined ? formatarMoeda(usuario.saldo) : 'R$ 0,00'}
+              Saldo disponível:{" "}
+              {saldoDisponivel !== undefined
+                ? formatarMoeda(saldoDisponivel)
+                : "R$ 0,00"}
             </div>
           </div>
           <input
@@ -329,7 +336,9 @@ export default function PoolDeInvestimentos() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Prazo:</span>
-                        <span className="text-green-600 font-semibold">{investimento?.prazo} meses</span>
+                        <span className="text-green-600 font-semibold">
+                          {investimento?.prazo} meses
+                        </span>
                       </div>
                     </div>
 
@@ -350,10 +359,12 @@ export default function PoolDeInvestimentos() {
                     <button
                       className="w-full bg-gradient-to-r from-brand-pink to-brand-purple-dark text-white rounded-full py-3 font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={() => handleInvestirClick(investimento)}
-                      disabled={investimento.totalInvestido >= investimento.valor}
+                      disabled={
+                        investimento.totalInvestido >= investimento.valor
+                      }
                     >
-                      {investimento.totalInvestido >= investimento.valor 
-                        ? "Investimento Concluído" 
+                      {investimento.totalInvestido >= investimento.valor
+                        ? "Investimento Concluído"
                         : "Investir Agora"}
                     </button>
                   </div>
@@ -375,7 +386,10 @@ export default function PoolDeInvestimentos() {
                 <img src="/logo.png" alt="Projeto" className="w-10 h-10" />
               </div>
               <h3 className="text-2xl font-extrabold mb-4 text-brand-purple-dark animate-fadeInUp">
-                Investir em <span className="text-brand-pink">{selectedInvestimento.nome}</span>
+                Investir em{" "}
+                <span className="text-brand-pink">
+                  {selectedInvestimento.nome}
+                </span>
               </h3>
 
               {/* Informações do investimento */}
@@ -396,15 +410,17 @@ export default function PoolDeInvestimentos() {
                   <span>Disponível:</span>
                   <span className="font-bold text-brand-purple-dark">
                     {formatarMoeda(
-                      selectedInvestimento.valor - 
-                      (selectedInvestimento.totalInvestido || 0)
+                      selectedInvestimento.valor -
+                        (selectedInvestimento.totalInvestido || 0)
                     )}
                   </span>
                 </div>
                 <div className="flex justify-between text-base font-medium text-gray-700">
                   <span>Seu saldo:</span>
                   <span className="font-bold text-brand-pink">
-                    {usuario?.saldo !== undefined ? formatarMoeda(usuario.saldo) : 'R$ 0,00'}
+                    {saldoDisponivel !== undefined
+                      ? formatarMoeda(saldoDisponivel)
+                      : "R$ 0,00"}
                   </span>
                 </div>
               </div>
@@ -412,20 +428,24 @@ export default function PoolDeInvestimentos() {
               {/* Slider ou input de valor */}
               <div className="mb-8 animate-fadeInUp">
                 <label className="block text-base font-bold text-brand-purple-dark mb-3">
-                  Valor do Investimento: <span className="text-brand-pink">{formatarMoeda(valorInvestimento)}</span>
+                  Valor do Investimento:{" "}
+                  <span className="text-brand-pink">
+                    {formatarMoeda(valorInvestimento)}
+                  </span>
                 </label>
                 <input
                   type="range"
                   min={selectedInvestimento.valorMinimo || 0}
                   max={Math.min(
-                    selectedInvestimento.valor - (selectedInvestimento.totalInvestido || 0),
+                    selectedInvestimento.valor -
+                      (selectedInvestimento.totalInvestido || 0),
                     usuario?.saldo || 0
                   )}
                   step="100"
                   value={valorInvestimento}
                   onChange={handleSliderChange}
                   className="w-full h-3 bg-brand-purple-light rounded-lg appearance-none cursor-pointer slider-thumb shadow-lg"
-                  style={{ accentColor: '#D9266F' }}
+                  style={{ accentColor: "#D9266F" }}
                 />
                 <div className="flex justify-between text-xs text-gray-700 mt-1 font-semibold">
                   <span>
@@ -434,8 +454,9 @@ export default function PoolDeInvestimentos() {
                   <span>
                     {formatarMoeda(
                       Math.min(
-                        selectedInvestimento.valor - (selectedInvestimento.totalInvestido || 0),
-                        usuario?.saldo || 0
+                        selectedInvestimento.valor -
+                          (selectedInvestimento.totalInvestido || 0),
+                        saldoDisponivel || 0
                       )
                     )}
                   </span>
@@ -445,13 +466,17 @@ export default function PoolDeInvestimentos() {
               {/* Estados do modal */}
               {showQRCode && (
                 <div className="mb-6 p-4 bg-yellow-100 border border-yellow-300 rounded-xl animate-fadeInUp">
-                  <p className="text-yellow-800 font-bold animate-pulse">Processando pagamento...</p>
+                  <p className="text-yellow-800 font-bold animate-pulse">
+                    Processando pagamento...
+                  </p>
                 </div>
               )}
 
               {showSuccess && (
                 <div className="mb-6 p-4 bg-green-100 border border-green-300 rounded-xl animate-fadeInUp">
-                  <p className="text-green-800 font-bold animate-fadeInUp">Investimento realizado com sucesso!</p>
+                  <p className="text-green-800 font-bold animate-fadeInUp">
+                    Investimento realizado com sucesso!
+                  </p>
                 </div>
               )}
 
@@ -469,8 +494,11 @@ export default function PoolDeInvestimentos() {
                   className="flex-1 bg-gradient-to-r from-brand-pink to-brand-purple-dark hover:from-brand-purple-dark hover:to-brand-pink text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={showQRCode || showSuccess}
                 >
-                  {showQRCode ? "Processando..." : 
-                   showSuccess ? "Concluído!" : "Confirmar"}
+                  {showQRCode
+                    ? "Processando..."
+                    : showSuccess
+                    ? "Concluído!"
+                    : "Confirmar"}
                 </button>
               </div>
             </div>

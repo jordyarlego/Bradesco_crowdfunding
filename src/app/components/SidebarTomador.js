@@ -92,26 +92,8 @@ export default function SidebarTomador({ user }) {
           <br />
           Empréstimo
         </div>
-      </Link>
-      {/* Botão Empréstimo Ativo */}
-      <Link
-        href="/dashboard-tomador/emprestimo-ativo"
-        className="mb-8 w-full flex flex-col items-center"
-      >
-        <button
-           onClick={()=> handleEmprestimoAtivo()}
-          className="bg-gradient-to-br from-brand-pink to-brand-purple-dark hover:from-brand-purple-dark hover:to-brand-pink text-white p-4 rounded-xl shadow-lg flex flex-col items-center transition-all duration-200 border-2 border-white/10 hover:border-brand-pink focus:outline-none focus:ring-2 focus:ring-brand-pink"
-          title="Empréstimo Ativo"
-          style={{ minWidth: 0 }}
-        >
-          <Image src="/logo.png" alt="Logo" width={26} height={26} />
-        </button>
-        <div className="text-xs text-white mt-2 text-center font-semibold">
-          Empréstimo
-          <br />
-          Ativo
-        </div>
-      </Link>
+      </Link>      
+      
       {/* Logout */}
       <button
         onClick={() => {

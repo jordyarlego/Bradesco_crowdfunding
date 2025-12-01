@@ -18,23 +18,29 @@ export default function Entrar() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
-  // 🔥 Se o usuário já estiver autenticado → redireciona automaticamente
+  // 🔥 Modificado: Só redirecionar após verificação completa
   useEffect(() => {
-    if (!loading && autenticado && usuario) {
-      const role = usuario.role || usuario.tipo;
+    if (!loading && !hasCheckedAuth) {
+      setHasCheckedAuth(true);
+      
+      if (autenticado && usuario) {
+        console.log("Usuário já autenticado, redirecionando...", usuario);
+        
+        const role = usuario.role || usuario.tipo;
+        const redirectMap = {
+          'investidor': '/dashboard-investidor',
+          'tomador': '/dashboard-tomador', 
+          'admin': '/dashboard-admin'
+        };
 
-      const redirectMap = {
-        investidor: "/dashboard-investidor",
-        tomador: "/dashboard-tomador",
-        admin: "/dashboard-admin",
-      };
-
-      router.push(redirectMap[role] || "/dashboard");
+        const redirectPath = redirectMap[role] || '/dashboard';
+        router.push(redirectPath);
+      }
     }
-  }, [autenticado, loading, usuario, router]);
+  }, [autenticado, loading, usuario, router, hasCheckedAuth]);
 
-  // 🔥 Input change handler
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
@@ -42,69 +48,58 @@ export default function Entrar() {
     });
   };
 
-  // 🔥 Submit handler (com AuthContext atualizado)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setMessage("");
 
-    if (!formData.email || !formData.senha) {
-      setMessage("Por favor, preencha todos os campos.");
-      setIsLoading(false);
-      return;
-    }
-
-    const emailRegex = /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/;
-    if (!emailRegex.test(formData.email)) {
-      setMessage("Email inválido.");
-      setIsLoading(false);
-      return;
-    }
+    // ... validações ...
 
     try {
-      const result = await login({
+      const data = await authService.login({
         email: formData.email,
         senha: formData.senha,
       });
 
-      if (!result.success) {
-        setMessage(result.message || "Falha no login.");
-        setIsLoading(false);
-        return;
+      console.log("Resposta do login:", data);
+
+      if (!data || !data.token || !data.usuario) {
+        throw new Error("Resposta inesperada do servidor.");
       }
 
-      setMessage("Login realizado com sucesso! Redirecionando...");
-
+      // 🔥 IMPORTANTE: Redirecionar APENAS após login bem-sucedido
+      // Remova o setTimeout e redirecione diretamente
       const loginSuccess = login({
         usuario: data.usuario,
         token: data.token,
       });
 
       if (!loginSuccess) {
-        throw new Error("Erro ao salvar autenticação.");
+        throw new Error("Erro ao salvar dados de autenticação.");
       }
 
-      setMessage("Login realizado com sucesso! Redirecionando...");
+      // Redirecionar imediatamente após login
+      const role = data.usuario.role || data.usuario.tipo;
+      console.log("Role do usuário:", role);
 
-      setTimeout(() => {
-        const role = data.usuario.role || data.usuario.tipo;
+      const redirectMap = {
+        'investidor': '/dashboard-investidor',
+        'tomador': '/dashboard-tomador', 
+        'admin': '/dashboard-admin'
+      };
 
-        const redirectMap = {
-          investidor: "/dashboard-investidor",
-          tomador: "/dashboard-tomador",
-          admin: "/dashboard-admin",
-        };
+      const redirectPath = redirectMap[role] || '/dashboard';
+      console.log("Redirecionando para:", redirectPath);
+      router.push(redirectPath);
 
-        router.push(redirectMap[role] || "/");
-      }, 1200);
     } catch (error) {
       console.error("Erro no login:", error);
-      setMessage(error.message || "Erro ao fazer login.");
+      setMessage(error.message || "Erro ao fazer login. Verifique suas credenciais.");
       setIsLoading(false);
     }
   };
 
-  // 🔥 Loading inicial enquanto verifica autenticação
+  // 🔥 MOSTRAR LOADING apenas enquanto verifica autenticação
   if (loading) {
     return (
       <>
@@ -116,19 +111,10 @@ export default function Entrar() {
     );
   }
 
-  // 🔥 Durante redirecionamento, evita mostrar o formulário
-  if (autenticado) {
-    return (
-      <>
-        <Header />
-        <main className="min-h-screen bg-hero-gradient flex items-center justify-center">
-          <p className="text-white text-xl">Redirecionando...</p>
-        </main>
-      </>
-    );
-  }
+  // 🔥 REMOVA esta verificação - o useEffect já cuida do redirecionamento
+  // if (autenticado) { ... }
 
-  // 🔥 FORMULÁRIO (Usuário não autenticado)
+
   return (
     <>
       <Header />
@@ -166,10 +152,10 @@ export default function Entrar() {
                   placeholder="Email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-4 text-white placeholder-white/70 focus:ring-2 focus:ring-brand-pink transition"
+                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-4 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all duration-300"
                   disabled={isLoading}
                 />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70">
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/70">
                   ✉️
                 </div>
               </div>
@@ -182,10 +168,10 @@ export default function Entrar() {
                   placeholder="Sua senha"
                   value={formData.senha}
                   onChange={handleInputChange}
-                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-4 text-white placeholder-white/70 focus:ring-2 focus:ring-brand-pink transition"
+                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-4 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all duration-300"
                   disabled={isLoading}
                 />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70">
+                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/70">
                   🔒
                 </div>
               </div>
@@ -194,7 +180,7 @@ export default function Entrar() {
               <div className="text-right">
                 <Link
                   href="/esqueci-senha"
-                  className="text-brand-pink hover:text-brand-pink-light transition text-sm"
+                  className="text-brand-pink hover:text-brand-pink-light transition-colors text-sm"
                 >
                   Esqueci minha senha
                 </Link>
@@ -203,8 +189,8 @@ export default function Entrar() {
               {/* Botão Entrar */}
               <button
                 type="submit"
-                className="w-full bg-brand-pink hover:bg-brand-pink-light text-white font-bold py-4 rounded-full text-lg transition transform hover:scale-105 disabled:opacity-50"
                 disabled={isLoading}
+                className="w-full bg-brand-pink hover:bg-brand-pink-light text-white font-bold py-4 px-8 rounded-full text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Entrando..." : "Entrar"}
               </button>
@@ -217,12 +203,28 @@ export default function Entrar() {
               <div className="flex-1 border-t border-white/20"></div>
             </div>
 
-            {/* Cadastrar */}
+            {/* Botão Cadastrar */}
             <Link href="/registro">
-              <button className="w-full bg-white/10 border border-white/20 text-white py-4 rounded-full hover:bg-white/20 transition transform hover:scale-105">
+              <button 
+                className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold py-4 px-8 rounded-full text-lg transition-all duration-300 transform hover:scale-105 hover:bg-white/20"
+                disabled={isLoading}
+              >
                 Criar nova conta
               </button>
             </Link>
+
+            {/* Link para Cadastro */}
+            <div className="text-center mt-6">
+              <p className="text-white/70">
+                Não tem uma conta?{" "}
+                <Link
+                  href="/registro"
+                  className="text-brand-pink hover:text-brand-pink-light transition-colors"
+                >
+                  Cadastre-se
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
       </main>

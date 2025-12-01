@@ -12,7 +12,7 @@ export default function EmprestimoAtivo() {
   const router = useRouter();
   const { id: emprestimoId } = useParams();
 
-  const { usuario, autenticado, loading, isBorrower } = useContext(AuthContext);
+  const { usuario, autenticado, loading } = useContext(AuthContext);
 
   const [isLoading, setIsLoading] = useState(true);
   const [emprestimo, setEmprestimo] = useState(null);
@@ -26,7 +26,7 @@ export default function EmprestimoAtivo() {
   // ======================================================
   useEffect(() => {
     if (!loading) {
-      if (!autenticado || !isBorrower()) {
+      if (!autenticado) {
         router.push("/entrar");
         return;
       }

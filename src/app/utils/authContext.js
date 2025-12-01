@@ -1,103 +1,71 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { authService } from "../../services/authService";
+import { createContext, useState, useEffect, useContext } from "react";
 
-export const AuthContext = createContext();
+export const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
-  const router = useRouter();
-
   const [usuario, setUsuario] = useState(null);
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true); // Começa como true
   const [autenticado, setAutenticado] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  /**
-   * Carrega sessão salva no localStorage
-   */
   useEffect(() => {
-    const storedUser = authService.getUser();
-    const token = authService.getAuthToken();
+    // Verificar token no localStorage/sessionStorage ao inicializar
+    const storedToken = localStorage.getItem("token");
+    const storedUsuario = localStorage.getItem("usuario");
 
-    console.log("🔄 AuthProvider -> carregando sessão:", {
-      token,
-      storedUser,
-    });
-
-    if (token && storedUser) {
-      setUsuario(storedUser);
-      setAutenticado(true);
+    if (storedToken && storedUsuario) {
+      try {
+        setToken(storedToken);
+        setUsuario(JSON.parse(storedUsuario));
+        setAutenticado(true);
+      } catch (error) {
+        console.error("Erro ao recuperar dados de autenticação:", error);
+        logout();
+      }
     }
-
-    setLoading(false);
+    
+    setLoading(false); // IMPORTANTE: Marcar que terminou de verificar
   }, []);
 
-  /**
-   * LOGIN — NÃO chama a API novamente!
-   * Apenas usa o resultado já retornado pelo authService.login()
-   */
-  const login = async (credentials) => {
+  const login = (data) => {
     try {
-      // 🔥 Aqui é a ÚNICA chamada ao backend
-      const resp = await authService.login(credentials);
-
-      // resp = { usuario, token } — já salvo pelo authService
-      setUsuario(resp.usuario);
+      const { token, usuario } = data;
+      
+      // Salvar no state
+      setToken(token);
+      setUsuario(usuario);
       setAutenticado(true);
-
-      console.log("✅ AuthContext: Login finalizado");
-
-      return { success: true };
+      
+      // Salvar no localStorage
+      localStorage.setItem("token", token);
+      localStorage.setItem("usuario", JSON.stringify(usuario));
+      
+      return true;
     } catch (error) {
-      console.error("❌ AuthContext: Erro no login:", error);
-      return { success: false, message: error.message };
+      console.error("Erro ao fazer login:", error);
+      return false;
     }
   };
 
-  /**
-   * LOGOUT
-   */
-  const logout = async () => {
-    console.log("🚪 AuthContext: Logout solicitado");
-
-    await authService.completeLogout();
-
+  const logout = () => {
+    setToken(null);
     setUsuario(null);
     setAutenticado(false);
-
-    router.push("/");
+    localStorage.removeItem("token");
+    localStorage.removeItem("usuario");
   };
-
-  /**
-   * Atualiza o usuário após edição de perfil
-   */
-  const refreshUser = () => {
-    const freshUser = authService.getUserData();
-
-    if (freshUser) {
-      setUsuario(freshUser);
-      setAutenticado(true);
-    } else {
-      setUsuario(null);
-      setAutenticado(false);
-    }
-  };
-
-  const isInvestor = () => usuario?.role === "investidor";
-  const isBorrower = () => usuario?.role === "tomador";
 
   return (
     <AuthContext.Provider
       value={{
         usuario,
+        token,
         autenticado,
-        loading,
+        loading, // Exportar loading
         login,
         logout,
-        refreshUser,
-        isInvestor,
-        isBorrower,
       }}
     >
       {children}

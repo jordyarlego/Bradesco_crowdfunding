@@ -11,14 +11,12 @@ export const investimentoService = {
   },
 
   async listarInvestimentos(token) {
-    console.log("🔍 Service: Buscando investimentos...");
-
     try {
       const response = await api("investimentos", {
         method: "GET",
         token,
       });
-      console.log("✅ Service: Investimentos recebidos:", response);
+
       return response;
     } catch (error) {
       console.error("❌ Service: Erro ao buscar investimentos:", error);
@@ -44,13 +42,6 @@ export const investimentoService = {
     return await api(`investimentos/${id}`, {
       method: "DELETE",
       token,
-    });
-  },
-
-  // Método específico para investimentos do usuário logado
-  async listarMeusInvestimentos() {
-    return await api("investimentos/meus", {
-      method: "GET",
     });
   },
 };

@@ -17,10 +17,15 @@ function QRCodeDisplay({ value, size = 200 }) {
     for (let i = 0; i < gridSize; i++) {
       for (let j = 0; j < gridSize; j++) {
         // Padrão simulado baseado na posição
-        const shouldFill = (i * gridSize + j) % 3 === 0 || 
-                          (i === 0 || i === gridSize - 1 || j === 0 || j === gridSize - 1) ||
-                          (i < 7 && j < 7) || (i < 7 && j >= gridSize - 7) || 
-                          (i >= gridSize - 7 && j < 7);
+        const shouldFill =
+          (i * gridSize + j) % 3 === 0 ||
+          i === 0 ||
+          i === gridSize - 1 ||
+          j === 0 ||
+          j === gridSize - 1 ||
+          (i < 7 && j < 7) ||
+          (i < 7 && j >= gridSize - 7) ||
+          (i >= gridSize - 7 && j < 7);
         cells.push(shouldFill);
       }
     }
@@ -32,7 +37,11 @@ function QRCodeDisplay({ value, size = 200 }) {
 
   return (
     <div className="bg-white p-4 rounded-xl shadow-lg">
-      <svg width={size} height={size} className="border-4 border-gray-800 rounded">
+      <svg
+        width={size}
+        height={size}
+        className="border-4 border-gray-800 rounded"
+      >
         {cells.map((fill, index) => {
           const row = Math.floor(index / 25);
           const col = index % 25;
@@ -53,7 +62,12 @@ function QRCodeDisplay({ value, size = 200 }) {
 }
 
 // Componente de gráfico circular
-function CircularProgress({ percentage, size = 100, strokeWidth = 8, color = "#D9266F" }) {
+function CircularProgress({
+  percentage,
+  size = 100,
+  strokeWidth = 8,
+  color = "#D9266F",
+}) {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (percentage / 100) * circumference;
@@ -95,14 +109,14 @@ function CircularProgress({ percentage, size = 100, strokeWidth = 8, color = "#D
 export default function DashboardInvestidor() {
   const router = useRouter();
 
-  const { usuario, autenticado, loading, isInvestor, logout } =
+  const { usuario, autenticado, loading, logout } =
     useContext(AuthContext);
 
   const [saldoDisponivel, setSaldoDisponivel] = useState();
   const [aplicacoesAtivas, setAplicacoesAtivas] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState(null);
-  
+
   // Estados para modais
   const [modalDepositar, setModalDepositar] = useState(false);
   const [modalSacar, setModalSacar] = useState(false);
@@ -114,11 +128,10 @@ export default function DashboardInvestidor() {
 
   useEffect(() => {
     if (!loading) {
-      if (!autenticado || !isInvestor()) {
+      if (!autenticado) {
         router.push("/entrar");
         return;
       }
-      ;
       carregarDados();
     }
   }, [loading, autenticado, usuario]);
@@ -126,48 +139,31 @@ export default function DashboardInvestidor() {
   const carregarDados = async () => {
     const token = localStorage.getItem("authToken");
 
-    try {      
+    try {
       setIsLoading(true);
 
-      const usuarioDados = await usuarioService.buscarPorId(usuario?.id)
+      const usuarioDados = await usuarioService.buscarPorId(usuario?.id);
 
-      setSaldoDisponivel(usuarioDados?.saldo)
-
-      console.log("dados", usuarioDados);
+      setSaldoDisponivel(usuarioDados?.saldo);
 
       const aplicacoes = await aplicacaoService.listarPorUsuario(
         usuario?.id,
         token
       );
-      
-      console.log("📋 Lista completa de aplicações:", aplicacoes);
-      
-      
-      const aplicacoesProcessadas = Array.isArray(aplicacoes) 
-        ? aplicacoes.map(aplicacao => ({
+
+      const aplicacoesProcessadas = Array.isArray(aplicacoes)
+        ? aplicacoes.map((aplicacao) => ({
             ...aplicacao,
             investimento: aplicacao.investimento,
-           
+
             valorAplicado: parseFloat(aplicacao.valor),
-            dataFormatada: new Date(aplicacao.dataCriacao).toLocaleDateString('pt-BR'),
+            dataFormatada: new Date(aplicacao.dataCriacao).toLocaleDateString(
+              "pt-BR"
+            ),
           }))
         : [];
 
-      ;
-      
-      // ✅ Para debug
-      if (aplicacoesProcessadas.length > 0) {
-        aplicacoesProcessadas.forEach((aplicacao, index) => {
-          console.log(`📊 Aplicação ${index + 1}:`, {
-            valorInvestido: aplicacao.valor,
-            investimentoNome: aplicacao.investimento?.nome,
-            totalInvestimento: aplicacao.investimento?.valor
-          });
-        });
-      }
-
       setAplicacoesAtivas(aplicacoesProcessadas);
-
     } catch (error) {
       console.error("❌ Erro ao carregar dados do dashboard:", error);
 
@@ -176,7 +172,6 @@ export default function DashboardInvestidor() {
         message: error.message || "Erro ao carregar dados do investidor.",
       });
 
-      
       if (
         String(error.message).includes("401") ||
         String(error.message).includes("Token")
@@ -191,9 +186,8 @@ export default function DashboardInvestidor() {
     }
   };
 
-
   const formatarMoeda = (valor) => {
-    const numero = typeof valor === 'string' ? parseFloat(valor) : valor;
+    const numero = typeof valor === "string" ? parseFloat(valor) : valor;
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
@@ -206,15 +200,15 @@ export default function DashboardInvestidor() {
       return {
         totalInvestido: 0,
         totalAplicacoes: 0,
-        retornoEstimado: 0
+        retornoEstimado: 0,
       };
     }
 
     const totalInvestido = aplicacoesAtivas.reduce(
-      (acc, aplicacao) => acc + (parseFloat(aplicacao.valor) || 0), 
+      (acc, aplicacao) => acc + (parseFloat(aplicacao.valor) || 0),
       0
     );
-    
+
     const retornoEstimado = aplicacoesAtivas.reduce((acc, aplicacao) => {
       const investimento = aplicacao.investimento;
       const juros = (investimento?.juros || 0) / 100;
@@ -226,60 +220,100 @@ export default function DashboardInvestidor() {
     return {
       totalInvestido,
       totalAplicacoes: aplicacoesAtivas.length,
-      retornoEstimado
+      retornoEstimado,
     };
   }, [aplicacoesAtivas]);
 
   // Handler para depositar
-  const handleDepositar = () => {
+  const handleDepositar = async () => {
     if (!valorDeposito || parseFloat(valorDeposito) <= 0) {
       setToast({ type: "error", message: "Digite um valor válido" });
       return;
     }
 
-    // Mostrar QR code
-    setMostrarQRCodeDeposito(true);
-    
-    // Após 4 segundos, mostrar transação concluída
-    setTimeout(() => {
-      setTransacaoConcluida(true);
+    const token = localStorage.getItem("authToken");
+    const valor = parseFloat(valorDeposito);
+    const novoSaldo = (saldoDisponivel || 0) + valor;
+
+    try {
+      // Mostrar QR code
+      setMostrarQRCodeDeposito(true);
+
+      // Atualizar saldo na API
+      await usuarioService.atualizarSaldo(usuario?.id, novoSaldo, token);
+
+      // Após 4 segundos, mostrar transação concluída
       setTimeout(() => {
-        setModalDepositar(false);
-        setValorDeposito("");
-        setMostrarQRCodeDeposito(false);
-        setTransacaoConcluida(false);
-        setSaldoDisponivel((prev) => (prev || 0) + parseFloat(valorDeposito));
-        setToast({ type: "success", message: "Depósito realizado com sucesso!" });
-      }, 2000);
-    }, 4000);
+        setTransacaoConcluida(true);
+        setTimeout(() => {
+          setModalDepositar(false);
+          setValorDeposito("");
+          setMostrarQRCodeDeposito(false);
+          setTransacaoConcluida(false);
+          setSaldoDisponivel(novoSaldo);
+          setToast({
+            type: "success",
+            message: "Depósito realizado com sucesso!",
+          });
+        }, 2000);
+      }, 4000);
+    } catch (error) {
+      console.error("❌ Erro ao atualizar saldo:", error);
+      setMostrarQRCodeDeposito(false);
+      setToast({
+        type: "error",
+        message:
+          error.message || "Erro ao processar depósito. Tente novamente.",
+      });
+    }
   };
 
   // Handler para sacar
-  const handleSacar = () => {
+  const handleSacar = async () => {
     if (!valorSaque || parseFloat(valorSaque) <= 0) {
       setToast({ type: "error", message: "Digite um valor válido" });
       return;
     }
-    if (parseFloat(valorSaque) > (saldoDisponivel || 0)) {
+
+    const valor = parseFloat(valorSaque);
+    if (valor > (saldoDisponivel || 0)) {
       setToast({ type: "error", message: "Saldo insuficiente" });
       return;
     }
 
-    // Mostrar QR code
-    setMostrarQRCodeSaque(true);
-    
-    // Após 4 segundos, mostrar transação concluída
-    setTimeout(() => {
-      setTransacaoConcluida(true);
+    const token = localStorage.getItem("authToken");
+    const novoSaldo = (saldoDisponivel || 0) - valor;
+
+    try {
+      // Mostrar indicador de processamento
+      setMostrarQRCodeSaque(true);
+
+      // Atualizar saldo na API
+      await usuarioService.atualizarSaldo(usuario?.id, novoSaldo, token);
+
+      // Após 4 segundos, mostrar transação concluída
       setTimeout(() => {
-        setModalSacar(false);
-        setValorSaque("");
-        setMostrarQRCodeSaque(false);
-        setTransacaoConcluida(false);
-        setSaldoDisponivel((prev) => (prev || 0) - parseFloat(valorSaque));
-        setToast({ type: "success", message: "Saque realizado com sucesso!" });
-      }, 2000);
-    }, 4000);
+        setTransacaoConcluida(true);
+        setTimeout(() => {
+          setModalSacar(false);
+          setValorSaque("");
+          setMostrarQRCodeSaque(false);
+          setTransacaoConcluida(false);
+          setSaldoDisponivel(novoSaldo);
+          setToast({
+            type: "success",
+            message: "Saque realizado com sucesso!",
+          });
+        }, 2000);
+      }, 4000);
+    } catch (error) {
+      console.error("❌ Erro ao atualizar saldo:", error);
+      setMostrarQRCodeSaque(false);
+      setToast({
+        type: "error",
+        message: error.message || "Erro ao processar saque. Tente novamente.",
+      });
+    }
   };
 
   if (loading) {
@@ -302,28 +336,48 @@ export default function DashboardInvestidor() {
         <header className="bg-white/80 backdrop-blur-lg px-8 py-6 flex items-center justify-between shadow-lg border-b border-gray-200">
           <div className="animate-fadeInUp">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-brand-purple-dark to-brand-pink bg-clip-text text-transparent">
-              Olá, {usuario?.nome?.split(' ')[0] || "Investidor"}! 👋
+              Olá, {usuario?.nome?.split(" ")[0] || "Investidor"}! 👋
             </h1>
-            <p className="text-gray-600 mt-1">Gerencie seus investimentos de forma inteligente</p>
+            <p className="text-gray-600 mt-1">
+              Gerencie seus investimentos de forma inteligente
+            </p>
           </div>
-          
+
           <div className="flex items-center gap-6">
             {/* Saldo - Design Moderno e Clean */}
-            <div className="bg-white/90 backdrop-blur-lg rounded-2xl p-6 border-2 border-gray-100 shadow-lg animate-fadeInUp" style={{ animationDelay: "0.1s" }}>
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">Saldo Disponível</p>
+            <div
+              className="bg-white/90 backdrop-blur-lg rounded-2xl p-6 border-2 border-gray-100 shadow-lg animate-fadeInUp"
+              style={{ animationDelay: "0.1s" }}
+            >
+              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">
+                Saldo Disponível
+              </p>
               <p className="text-4xl font-bold bg-gradient-to-r from-brand-purple-dark via-brand-pink to-brand-purple-dark bg-clip-text text-transparent">
                 {formatarMoeda(saldoDisponivel)}
               </p>
             </div>
 
             {/* Botões de ação - Paleta do App */}
-            <div className="flex gap-3 animate-fadeInUp" style={{ animationDelay: "0.2s" }}>
+            <div
+              className="flex gap-3 animate-fadeInUp"
+              style={{ animationDelay: "0.2s" }}
+            >
               <button
                 onClick={() => setModalDepositar(true)}
                 className="bg-gradient-to-r from-brand-pink to-brand-purple-dark hover:from-brand-purple-dark hover:to-brand-pink text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:scale-105 flex items-center gap-2 border-2 border-white/20"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
                 Depositar
               </button>
@@ -331,8 +385,18 @@ export default function DashboardInvestidor() {
                 onClick={() => setModalSacar(true)}
                 className="bg-white/90 hover:bg-white text-brand-purple-dark px-6 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 hover:scale-105 flex items-center gap-2 border-2 border-brand-pink/30 hover:border-brand-pink"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M20 12H4"
+                  />
                 </svg>
                 Sacar
               </button>
@@ -352,12 +416,32 @@ export default function DashboardInvestidor() {
             >
               <div className="flex items-center gap-3">
                 {toast.type === "error" ? (
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 ) : (
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 )}
                 <span className="font-semibold">{toast.message}</span>
@@ -370,50 +454,97 @@ export default function DashboardInvestidor() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-fadeInUp">
               <div className="bg-gradient-to-br from-brand-purple-light to-brand-purple-dark rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm opacity-80 font-semibold">Total Investido</h3>
+                  <h3 className="text-sm opacity-80 font-semibold">
+                    Total Investido
+                  </h3>
                   <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                   </div>
                 </div>
-                <p className="text-4xl font-bold">{formatarMoeda(estatisticas.totalInvestido)}</p>
+                <p className="text-4xl font-bold">
+                  {formatarMoeda(estatisticas.totalInvestido)}
+                </p>
               </div>
 
               <div className="bg-gradient-to-br from-brand-pink to-brand-pink-light rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm opacity-80 font-semibold">Aplicações Ativas</h3>
+                  <h3 className="text-sm opacity-80 font-semibold">
+                    Aplicações Ativas
+                  </h3>
                   <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      />
                     </svg>
                   </div>
                 </div>
-                <p className="text-4xl font-bold">{estatisticas.totalAplicacoes}</p>
+                <p className="text-4xl font-bold">
+                  {estatisticas.totalAplicacoes}
+                </p>
               </div>
 
               <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm opacity-80 font-semibold">Retorno Estimado</h3>
+                  <h3 className="text-sm opacity-80 font-semibold">
+                    Retorno Estimado
+                  </h3>
                   <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                      />
                     </svg>
                   </div>
                 </div>
-                <p className="text-4xl font-bold">{formatarMoeda(estatisticas.retornoEstimado)}</p>
+                <p className="text-4xl font-bold">
+                  {formatarMoeda(estatisticas.retornoEstimado)}
+                </p>
               </div>
             </div>
           )}
 
           {/* Investimentos Ativos */}
-          <div className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white/50 animate-fadeInUp" style={{ animationDelay: "0.2s" }}>
+          <div
+            className="bg-white/80 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-white/50 animate-fadeInUp"
+            style={{ animationDelay: "0.2s" }}
+          >
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-brand-purple-dark to-brand-pink bg-clip-text text-transparent">
                   Investimentos Ativos
                 </h2>
-                <p className="text-gray-600 mt-1">Visualize e acompanhe seus investimentos</p>
+                <p className="text-gray-600 mt-1">
+                  Visualize e acompanhe seus investimentos
+                </p>
               </div>
               {aplicacoesAtivas.length > 0 && (
                 <div className="text-right">
@@ -429,22 +560,38 @@ export default function DashboardInvestidor() {
               <div className="flex justify-center items-center py-12">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-16 h-16 border-4 border-brand-purple-dark/20 border-t-brand-purple-dark rounded-full animate-spin"></div>
-                  <span className="text-gray-600 font-semibold">Carregando investimentos...</span>
+                  <span className="text-gray-600 font-semibold">
+                    Carregando investimentos...
+                  </span>
                 </div>
               </div>
             ) : aplicacoesAtivas.length === 0 ? (
               <div className="text-center py-16 animate-fadeInUp">
                 <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-brand-pink/20 to-brand-purple-dark/20 rounded-full flex items-center justify-center">
-                  <svg className="w-16 h-16 text-brand-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  <svg
+                    className="w-16 h-16 text-brand-pink"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
                   </svg>
                 </div>
                 <p className="text-gray-600 text-xl font-semibold mb-2">
                   Você ainda não possui investimentos.
                 </p>
-                <p className="text-gray-500 mb-6">Comece a investir agora e multiplique seu dinheiro!</p>
+                <p className="text-gray-500 mb-6">
+                  Comece a investir agora e multiplique seu dinheiro!
+                </p>
                 <button
-                  onClick={() => router.push("/dashboard-investidor/pool-de-investimentos")}
+                  onClick={() =>
+                    router.push("/dashboard-investidor/pool-de-investimentos")
+                  }
                   className="bg-gradient-to-r from-brand-pink to-brand-purple-dark hover:from-brand-purple-dark hover:to-brand-pink text-white px-8 py-4 rounded-full font-bold shadow-lg transition-all duration-300 hover:scale-105"
                 >
                   Explorar Investimentos
@@ -454,10 +601,15 @@ export default function DashboardInvestidor() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {aplicacoesAtivas.map((aplicacao, index) => {
                   const investimento = aplicacao.investimento;
-                  const progresso = investimento?.valor > 0 
-                    ? Math.min(100, (investimento?.totalInvestido / investimento?.valor) * 100)
-                    : 0;
-                  
+                  const progresso =
+                    investimento?.valor > 0
+                      ? Math.min(
+                          100,
+                          (investimento?.totalInvestido / investimento?.valor) *
+                            100
+                        )
+                      : 0;
+
                   return (
                     <div
                       key={aplicacao.id}
@@ -473,9 +625,9 @@ export default function DashboardInvestidor() {
                             {aplicacao.dataFormatada}
                           </span>
                         </div>
-                        <CircularProgress 
-                          percentage={progresso} 
-                          size={70} 
+                        <CircularProgress
+                          percentage={progresso}
+                          size={70}
                           strokeWidth={6}
                           color="#D9266F"
                         />
@@ -487,7 +639,9 @@ export default function DashboardInvestidor() {
 
                       <div className="space-y-4">
                         <div className="flex justify-between items-center p-3 bg-gradient-to-r from-brand-pink/10 to-brand-purple-dark/10 rounded-xl">
-                          <span className="text-gray-700 font-semibold">Seu Investimento:</span>
+                          <span className="text-gray-700 font-semibold">
+                            Seu Investimento:
+                          </span>
                           <span className="text-xl font-bold text-brand-purple-dark">
                             {formatarMoeda(aplicacao.valor)}
                           </span>
@@ -495,19 +649,29 @@ export default function DashboardInvestidor() {
 
                         <div className="grid grid-cols-2 gap-3">
                           <div className="text-center p-3 bg-gray-50 rounded-xl">
-                            <p className="text-xs text-gray-600 mb-1">Taxa de Juros</p>
-                            <p className="text-lg font-bold text-green-600">{investimento?.juros || 0}% a.m.</p>
+                            <p className="text-xs text-gray-600 mb-1">
+                              Taxa de Juros
+                            </p>
+                            <p className="text-lg font-bold text-green-600">
+                              {investimento?.juros || 0}% a.m.
+                            </p>
                           </div>
                           <div className="text-center p-3 bg-gray-50 rounded-xl">
                             <p className="text-xs text-gray-600 mb-1">Prazo</p>
-                            <p className="text-lg font-bold text-brand-purple-dark">{investimento?.prazo || 0} meses</p>
+                            <p className="text-lg font-bold text-brand-purple-dark">
+                              {investimento?.prazo || 0} meses
+                            </p>
                           </div>
                         </div>
 
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
-                            <span className="text-gray-600 font-semibold">Progresso do Investimento</span>
-                            <span className="text-brand-pink font-bold">{Math.round(progresso)}%</span>
+                            <span className="text-gray-600 font-semibold">
+                              Progresso do Investimento
+                            </span>
+                            <span className="text-brand-pink font-bold">
+                              {Math.round(progresso)}%
+                            </span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                             <div
@@ -548,7 +712,9 @@ export default function DashboardInvestidor() {
                       Valor do Depósito
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">R$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
+                        R$
+                      </span>
                       <input
                         type="number"
                         value={valorDeposito}
@@ -556,7 +722,12 @@ export default function DashboardInvestidor() {
                         placeholder="0,00"
                         step="0.01"
                         className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 focus:outline-none text-xl font-bold transition-all bg-white text-gray-900"
-                        style={{ color: '#1a202c', fontWeight: 700, fontSize: '1.25rem', background: '#fff' }}
+                        style={{
+                          color: "#1a202c",
+                          fontWeight: 700,
+                          fontSize: "1.25rem",
+                          background: "#fff",
+                        }}
                       />
                     </div>
                   </div>
@@ -585,13 +756,20 @@ export default function DashboardInvestidor() {
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-brand-purple-dark to-brand-pink bg-clip-text text-transparent mb-2">
                   Escaneie o QR Code
                 </h2>
-                <p className="text-gray-600 mb-6">Use o app do seu banco para escanear</p>
+                <p className="text-gray-600 mb-6">
+                  Use o app do seu banco para escanear
+                </p>
                 <div className="flex justify-center mb-6 animate-scaleInBounce">
                   <div className="bg-white p-6 rounded-2xl shadow-xl border-2 border-brand-pink/20">
-                    <QRCodeDisplay value={`Depósito: ${formatarMoeda(valorDeposito)}`} size={250} />
+                    <QRCodeDisplay
+                      value={`Depósito: ${formatarMoeda(valorDeposito)}`}
+                      size={250}
+                    />
                   </div>
                 </div>
-                <p className="text-gray-600 font-semibold">Processando transação...</p>
+                <p className="text-gray-600 font-semibold">
+                  Processando transação...
+                </p>
                 <div className="mt-4 flex justify-center">
                   <div className="w-10 h-10 border-4 border-brand-pink/20 border-t-brand-pink rounded-full animate-spin"></div>
                 </div>
@@ -599,14 +777,27 @@ export default function DashboardInvestidor() {
             ) : (
               <div className="text-center animate-scaleInBounce">
                 <div className="w-28 h-28 mx-auto mb-6 bg-gradient-to-br from-brand-pink to-brand-purple-dark rounded-full flex items-center justify-center shadow-xl animate-scaleInBounce">
-                  <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" className="animate-checkmark" />
+                  <svg
+                    className="w-16 h-16 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={3}
+                      d="M5 13l4 4L19 7"
+                      className="animate-checkmark"
+                    />
                   </svg>
                 </div>
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-brand-purple-dark to-brand-pink bg-clip-text text-transparent mb-2">
                   Transação Concluída!
                 </h2>
-                <p className="text-gray-600 text-lg">Seu depósito foi processado com sucesso.</p>
+                <p className="text-gray-600 text-lg">
+                  Seu depósito foi processado com sucesso.
+                </p>
               </div>
             )}
           </div>
@@ -626,7 +817,9 @@ export default function DashboardInvestidor() {
                   <h2 className="text-3xl font-bold bg-gradient-to-r from-brand-purple-dark to-brand-pink bg-clip-text text-transparent mb-2">
                     Sacar
                   </h2>
-                  <p className="text-gray-600">Escolha o valor que deseja sacar</p>
+                  <p className="text-gray-600">
+                    Escolha o valor que deseja sacar
+                  </p>
                 </div>
 
                 <div className="space-y-6">
@@ -635,7 +828,9 @@ export default function DashboardInvestidor() {
                       Valor do Saque
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">R$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
+                        R$
+                      </span>
                       <input
                         type="number"
                         value={valorSaque}
@@ -644,12 +839,20 @@ export default function DashboardInvestidor() {
                         step="0.01"
                         max={saldoDisponivel}
                         className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-xl focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 focus:outline-none text-xl font-bold transition-all bg-white text-gray-900"
-                        style={{ color: '#1a202c', fontWeight: 700, fontSize: '1.25rem', background: '#fff' }}
+                        style={{
+                          color: "#1a202c",
+                          fontWeight: 700,
+                          fontSize: "1.25rem",
+                          background: "#fff",
+                        }}
                       />
                     </div>
                     <div className="mt-3 p-3 bg-gradient-to-r from-brand-pink/10 to-brand-purple-dark/10 rounded-xl border border-brand-pink/20">
                       <p className="text-sm text-gray-600">
-                        Saldo disponível: <span className="font-bold text-brand-purple-dark">{formatarMoeda(saldoDisponivel)}</span>
+                        Saldo disponível:{" "}
+                        <span className="font-bold text-brand-purple-dark">
+                          {formatarMoeda(saldoDisponivel)}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -661,7 +864,12 @@ export default function DashboardInvestidor() {
                       type="text"
                       placeholder="Digite sua chave PIX"
                       className="w-full py-4 px-4 border-2 border-gray-200 rounded-xl focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 focus:outline-none text-lg font-bold transition-all bg-white text-gray-900"
-                      style={{ color: '#1a202c', fontWeight: 700, fontSize: '1.1rem', background: '#fff' }}
+                      style={{
+                        color: "#1a202c",
+                        fontWeight: 700,
+                        fontSize: "1.1rem",
+                        background: "#fff",
+                      }}
                       // Adicione o estado e handler para chave PIX conforme necessário
                     />
                   </div>
@@ -691,7 +899,9 @@ export default function DashboardInvestidor() {
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-brand-purple-dark to-brand-pink bg-clip-text text-transparent mb-2">
                   Realizando transação...
                 </h2>
-                <p className="text-gray-600 mb-6">Aguarde enquanto processamos seu saque.</p>
+                <p className="text-gray-600 mb-6">
+                  Aguarde enquanto processamos seu saque.
+                </p>
                 <div className="mt-4 flex justify-center">
                   <div className="w-10 h-10 border-4 border-brand-pink/20 border-t-brand-pink rounded-full animate-spin"></div>
                 </div>
@@ -699,14 +909,27 @@ export default function DashboardInvestidor() {
             ) : (
               <div className="text-center animate-scaleInBounce">
                 <div className="w-28 h-28 mx-auto mb-6 bg-gradient-to-br from-brand-pink to-brand-purple-dark rounded-full flex items-center justify-center shadow-xl animate-scaleInBounce">
-                  <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" className="animate-checkmark" />
+                  <svg
+                    className="w-16 h-16 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={3}
+                      d="M5 13l4 4L19 7"
+                      className="animate-checkmark"
+                    />
                   </svg>
                 </div>
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-brand-purple-dark to-brand-pink bg-clip-text text-transparent mb-2">
                   Transação Concluída!
                 </h2>
-                <p className="text-gray-600 text-lg">Seu saque foi processado com sucesso.</p>
+                <p className="text-gray-600 text-lg">
+                  Seu saque foi processado com sucesso.
+                </p>
               </div>
             )}
           </div>
