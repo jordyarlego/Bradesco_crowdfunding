@@ -57,7 +57,7 @@ export default function PoolDeInvestimentos() {
       console.log("PoolInvestimentos - Usuário autenticado como investidor");
       fetchInvestimentos();
     }
-  }, [autenticado, authLoading, isInvestor, router]);
+  }, [autenticado, authLoading, isInvestor, router, usuario]);
 
   // ----------------------------
   //   BUSCA INVESTIMENTOS
@@ -65,7 +65,7 @@ export default function PoolDeInvestimentos() {
   const fetchInvestimentos = async () => {
     try {
       console.log("Buscando investimentos...");
-      const data = await investimentoService.listarInvestimentos();
+      const data = await investimentoService.listarInvestimentos(usuario.token);
       console.log("Investimentos recebidos:", data);
       setInvestimentos(data || []);
     } catch (error) {

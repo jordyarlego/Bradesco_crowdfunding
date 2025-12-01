@@ -1,85 +1,91 @@
-// authContext.js - Adicionar suporte a cookies
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { authService } from "../../services/authService";
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const router = useRouter();
+
   const [usuario, setUsuario] = useState(null);
   const [autenticado, setAutenticado] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  /**
+   * Carrega sessão salva no localStorage
+   */
   useEffect(() => {
-    const loadUser = () => {
-      if (typeof window === "undefined") return;
+    const storedUser = authService.getUser();
+    const token = authService.getAuthToken();
 
-      const token = localStorage.getItem("authToken");
-      const userData = localStorage.getItem("userData");
+    console.log("🔄 AuthProvider -> carregando sessão:", {
+      token,
+      storedUser,
+    });
 
-      console.log("AuthProvider - Carregando usuário:", { token, userData });
-
-      if (token && userData) {
-        try {
-          const parsedUser = JSON.parse(userData);
-          setUsuario(parsedUser);
-          setAutenticado(true);
-          console.log("AuthProvider - Usuário carregado:", parsedUser);
-        } catch (error) {
-          console.error("Erro ao parsear userData:", error);
-          logout();
-        }
-      }
-
-      setLoading(false);
-    };
-
-    loadUser();
-  }, []);
-
-  const login = ({ usuario, token }) => {
-    console.log("AuthContext - Login:", { usuario, token });
-
-    if (!usuario || !token) {
-      console.error("Dados inválidos no login");
-      return { success: false };
+    if (token && storedUser) {
+      setUsuario(storedUser);
+      setAutenticado(true);
     }
 
-    localStorage.setItem("authToken", token);
-    localStorage.setItem("userData", JSON.stringify(usuario));
+    setLoading(false);
+  }, []);
 
-    setUsuario(usuario);
-    setAutenticado(true);
+  /**
+   * LOGIN — NÃO chama a API novamente!
+   * Apenas usa o resultado já retornado pelo authService.login()
+   */
+  const login = async (credentials) => {
+    try {
+      // 🔥 Aqui é a ÚNICA chamada ao backend
+      const resp = await authService.login(credentials);
 
-    console.log("AuthContext - Login realizado com sucesso");
-    return { success: true };
+      // resp = { usuario, token } — já salvo pelo authService
+      setUsuario(resp.usuario);
+      setAutenticado(true);
+
+      console.log("✅ AuthContext: Login finalizado");
+
+      return { success: true };
+    } catch (error) {
+      console.error("❌ AuthContext: Erro no login:", error);
+      return { success: false, message: error.message };
+    }
   };
 
-  const logout = () => {
-    console.log("AuthContext - Logout");
+  /**
+   * LOGOUT
+   */
+  const logout = async () => {
+    console.log("🚪 AuthContext: Logout solicitado");
 
-    // Limpar localStorage
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userData");
-
-    // 🔥 LIMPAR COOKIES
-    removeCookie("authToken");
-    removeCookie("userData");
+    await authService.completeLogout();
 
     setUsuario(null);
     setAutenticado(false);
-    router.push("/entrar");
+
+    router.push("/");
   };
 
-  const isInvestor = () => {
-    return usuario?.role === "investidor";
+  /**
+   * Atualiza o usuário após edição de perfil
+   */
+  const refreshUser = () => {
+    const freshUser = authService.getUserData();
+
+    if (freshUser) {
+      setUsuario(freshUser);
+      setAutenticado(true);
+    } else {
+      setUsuario(null);
+      setAutenticado(false);
+    }
   };
 
-  const isBorrower = () => {
-    return usuario?.role === "tomador";
-  };
+  const isInvestor = () => usuario?.role === "investidor";
+  const isBorrower = () => usuario?.role === "tomador";
 
   return (
     <AuthContext.Provider
@@ -89,6 +95,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         login,
         logout,
+        refreshUser,
         isInvestor,
         isBorrower,
       }}

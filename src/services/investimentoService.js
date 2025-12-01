@@ -3,22 +3,34 @@ import { api } from "./api";
 import { authService } from "./authService";
 
 export const investimentoService = {
-  async criarInvestimento(data) {
+  async criarInvestimento(data, token) {
     return await api("investimentos", {
       method: "POST",
       body: data,
+      token
     });
   },
 
-  async listarInvestimentos() {
-    return await api("investimentos", {
-      method: "GET",
-    });
-  },
+  async listarInvestimentos(token) {
+    console.log("🔍 Service: Buscando investimentos...");
+    console.log("📝 Token atual:", localStorage.getItem("authToken"));
 
-  async buscarInvestimentoPorId(id) {
+    try {
+      const response = await api("investimentos", {
+        method: "GET",
+        token
+      });
+      console.log("✅ Service: Investimentos recebidos:", response);
+      return response;
+    } catch (error) {
+      console.error("❌ Service: Erro ao buscar investimentos:", error);
+      throw error;
+    }
+  },
+  async buscarInvestimentoPorId(id, token) {
     return await api(`investimentos/${id}`, {
       method: "GET",
+      token
     });
   },
 
@@ -26,12 +38,14 @@ export const investimentoService = {
     return await api(`investimentos/${id}/status`, {
       method: "PUT",
       body: { status },
+      token
     });
   },
 
   async deletarInvestimento(id) {
     return await api(`investimentos/${id}`, {
       method: "DELETE",
+      token
     });
   },
 

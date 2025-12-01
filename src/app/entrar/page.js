@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useContext, useEffect } from "react"; // 🔥 Adicione useEffect
+import { useState, useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Link from "next/link";
@@ -9,7 +9,7 @@ import { authService } from "@/services/authService";
 
 export default function Entrar() {
   const router = useRouter();
-  const { login, autenticado, loading, usuario } = useContext(AuthContext); // 🔥 Adicione estas props
+  const { login, autenticado, loading, usuario } = useContext(AuthContext);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -19,23 +19,22 @@ export default function Entrar() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // 🔥 NOVO: Redirecionar usuários já autenticados
+  // 🔥 Se o usuário já estiver autenticado → redireciona automaticamente
   useEffect(() => {
     if (!loading && autenticado && usuario) {
-      console.log("Usuário já autenticado, redirecionando...", usuario);
-      
       const role = usuario.role || usuario.tipo;
+
       const redirectMap = {
-        'investidor': '/dashboard-investidor',
-        'tomador': '/dashboard-tomador', 
-        'admin': '/dashboard-admin'
+        investidor: "/dashboard-investidor",
+        tomador: "/dashboard-tomador",
+        admin: "/dashboard-admin",
       };
 
-      const redirectPath = redirectMap[role] || '/dashboard';
-      router.push(redirectPath);
+      router.push(redirectMap[role] || "/dashboard");
     }
   }, [autenticado, loading, usuario, router]);
 
+  // 🔥 Input change handler
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
@@ -43,6 +42,7 @@ export default function Entrar() {
     });
   };
 
+  // 🔥 Submit handler (com AuthContext atualizado)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -62,57 +62,49 @@ export default function Entrar() {
     }
 
     try {
-      // 🔥 Chamada ao backend
-      const data = await authService.login({
+      const result = await login({
         email: formData.email,
         senha: formData.senha,
       });
 
-      console.log("Resposta do login:", data);
-
-      if (!data || !data.token || !data.usuario) {
-        throw new Error("Resposta inesperada do servidor.");
+      if (!result.success) {
+        setMessage(result.message || "Falha no login.");
+        setIsLoading(false);
+        return;
       }
 
-      // 🔥 Alimentar o AuthContext
+      setMessage("Login realizado com sucesso! Redirecionando...");
+
       const loginSuccess = login({
         usuario: data.usuario,
         token: data.token,
       });
 
       if (!loginSuccess) {
-        throw new Error("Erro ao salvar dados de autenticação.");
+        throw new Error("Erro ao salvar autenticação.");
       }
 
       setMessage("Login realizado com sucesso! Redirecionando...");
 
-      // 🔥 REDIRECIONAMENTO BASEADO NA ROLE
       setTimeout(() => {
         const role = data.usuario.role || data.usuario.tipo;
-        
-        console.log("Role do usuário:", role);
 
         const redirectMap = {
-          'investidor': '/dashboard-investidor',
-          'tomador': '/dashboard-tomador', 
-          'admin': '/dashboard-admin'
+          investidor: "/dashboard-investidor",
+          tomador: "/dashboard-tomador",
+          admin: "/dashboard-admin",
         };
 
-        const redirectPath = redirectMap[role] || '/';
-        
-        console.log("Redirecionando para:", redirectPath);
-        router.push(redirectPath);
-        
+        router.push(redirectMap[role] || "/");
       }, 1200);
-
     } catch (error) {
       console.error("Erro no login:", error);
-      setMessage(error.message || "Erro ao fazer login. Verifique suas credenciais.");
+      setMessage(error.message || "Erro ao fazer login.");
       setIsLoading(false);
     }
   };
 
-  // 🔥 MOSTRAR LOADING ENQUANTO VERIFICA AUTENTICAÇÃO
+  // 🔥 Loading inicial enquanto verifica autenticação
   if (loading) {
     return (
       <>
@@ -124,7 +116,7 @@ export default function Entrar() {
     );
   }
 
-  // 🔥 NÃO MOSTRAR FORMULÁRIO SE JÁ ESTIVER AUTENTICADO (será redirecionado pelo useEffect)
+  // 🔥 Durante redirecionamento, evita mostrar o formulário
   if (autenticado) {
     return (
       <>
@@ -136,6 +128,7 @@ export default function Entrar() {
     );
   }
 
+  // 🔥 FORMULÁRIO (Usuário não autenticado)
   return (
     <>
       <Header />
@@ -173,10 +166,10 @@ export default function Entrar() {
                   placeholder="Email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-4 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all duration-300"
+                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-4 text-white placeholder-white/70 focus:ring-2 focus:ring-brand-pink transition"
                   disabled={isLoading}
                 />
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/70">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70">
                   ✉️
                 </div>
               </div>
@@ -189,10 +182,10 @@ export default function Entrar() {
                   placeholder="Sua senha"
                   value={formData.senha}
                   onChange={handleInputChange}
-                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-4 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-brand-pink focus:border-transparent transition-all duration-300"
+                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-6 py-4 text-white placeholder-white/70 focus:ring-2 focus:ring-brand-pink transition"
                   disabled={isLoading}
                 />
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/70">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70">
                   🔒
                 </div>
               </div>
@@ -201,7 +194,7 @@ export default function Entrar() {
               <div className="text-right">
                 <Link
                   href="/esqueci-senha"
-                  className="text-brand-pink hover:text-brand-pink-light transition-colors text-sm"
+                  className="text-brand-pink hover:text-brand-pink-light transition text-sm"
                 >
                   Esqueci minha senha
                 </Link>
@@ -210,8 +203,8 @@ export default function Entrar() {
               {/* Botão Entrar */}
               <button
                 type="submit"
+                className="w-full bg-brand-pink hover:bg-brand-pink-light text-white font-bold py-4 rounded-full text-lg transition transform hover:scale-105 disabled:opacity-50"
                 disabled={isLoading}
-                className="w-full bg-brand-pink hover:bg-brand-pink-light text-white font-bold py-4 px-8 rounded-full text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Entrando..." : "Entrar"}
               </button>
@@ -224,28 +217,12 @@ export default function Entrar() {
               <div className="flex-1 border-t border-white/20"></div>
             </div>
 
-            {/* Botão Cadastrar */}
+            {/* Cadastrar */}
             <Link href="/registro">
-              <button 
-                className="w-full bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold py-4 px-8 rounded-full text-lg transition-all duration-300 transform hover:scale-105 hover:bg-white/20"
-                disabled={isLoading}
-              >
+              <button className="w-full bg-white/10 border border-white/20 text-white py-4 rounded-full hover:bg-white/20 transition transform hover:scale-105">
                 Criar nova conta
               </button>
             </Link>
-
-            {/* Link para Cadastro */}
-            <div className="text-center mt-6">
-              <p className="text-white/70">
-                Não tem uma conta?{" "}
-                <Link
-                  href="/registro"
-                  className="text-brand-pink hover:text-brand-pink-light transition-colors"
-                >
-                  Cadastre-se
-                </Link>
-              </p>
-            </div>
           </div>
         </div>
       </main>

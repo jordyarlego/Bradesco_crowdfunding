@@ -185,7 +185,7 @@ export default function DashboardTomador() {
                       <button
                         className="mt-4 w-full bg-brand-purple-dark hover:bg-brand-purple-light text-white py-2 rounded-lg transition-colors"
                         onClick={() =>
-                          router.push(`/dashboard-tomador/emprestimo/${emp.id}`)
+                          router.push(`/dashboard-tomador/emprestimo-ativo/${emp.id.toString()}`)
                         }
                       >
                         Ver Detalhes
